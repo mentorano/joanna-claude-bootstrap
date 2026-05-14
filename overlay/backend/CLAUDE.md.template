@@ -282,3 +282,43 @@ Audit log-ът не е „technical debug log" — той е публичен п
 2. Ако target е нов resource type — допълни `_enrich` да го хидратира.
 3. Допълни `ACTION_LABEL` в frontend.
 4. Ако action има reason — попълни `event.reason` директно (не event_metadata).
+
+## Declarative schema knobs — schema-as-config
+
+Когато имаш JSONB schema column на configurable entities (e.g. `register_types.field_definitions`, `report_types.column_configs`), use declarative properties за UI rendering decisions. Backend declares; frontend respects. **Не hardcode UI knowledge на frontend side ако schema knob може да го изрази.**
+
+Pattern: FieldDefinition с knobs като:
+
+| Knob category | Examples | Purpose |
+|---|---|---|
+| Core | `key`, `kind`, `label`, `abbr` | Identity + render type |
+| Layout | `section`, `compact`, `group` | UI grouping decisions |
+| Validation | `searchable_scopes`, `max_length`, `required` | Validator dispatch |
+| Polymorphism | `renderer`, `slots`, `item_fields` | Custom composite rendering |
+| Lookup | `lookup`, `allow_inline_add` | Per-scope reference data |
+
+Adding нов knob:
+1. Add в schema config (e.g. `app/services/X_schema.py` helpers).
+2. Update TS type (mirror на server-side schema).
+3. Update consumer (table renderer / form / filter panel).
+4. Migration да re-seed configs от обновените SCHEMAS.
+
+**Anti-pattern:** hardcode UI behavior в frontend (e.g. „за поле X в scope Y, render в compact view") вместо да declare-неш knob. Schema-as-config scales до N entity types; hardcoded UI logic не scales.
+
+## Blocking vs soft validation warnings — concept нарушение vs suspicious data
+
+`ValidationWarning.blocking: bool = False` flag разграничава two categories:
+
+- **Soft warning** (default, `blocking=False`): suspicious data, не нарушаване на invariant. User-ът може да override чрез `acknowledged_warnings`. Audit log записва override-а.
+- **Blocking warning** (`blocking=True`): концептуално нарушение. User-ът НЕ може да override-не чрез UI. Filter-функция (`filter_unacknowledged`) retains blocking-те дори когато са в acknowledged_codes (backend защита).
+
+`collect_warnings` end-of-pass logic:
+1. **Suppress redundant soft warnings on same field когато има blocking.** Ako blocking warning за `field=X`, всички non-blocking warnings за същия field се изхвърлят — UI noise prevention.
+2. **Sort blocking first.** UI render-ва blocking before soft (visual priority).
+
+Frontend renderers reagiraт:
+- Blocking present → red panel („Грешка"), override бутон скрит, само cancel/back-to-edit.
+- Mixed (blocking + soft) → blocking режим побеждава.
+- All soft → standard amber panel + override path.
+
+Adding нов blocking validator: `ValidationWarning(blocking=True)`. Frontend automatically respects.

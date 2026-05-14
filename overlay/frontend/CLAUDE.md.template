@@ -255,3 +255,133 @@ Interactive cell components, които приемат `display: string`, мог
 const renderedDisplay = displayNode ?? display;
 const isEmpty = display.trim() === "";  // ⚠ NOT на displayNode
 ```
+
+### Schema-aware shared компоненти — never hardcode reference data ids
+
+Shared components (FilterPanel, AuditFilters, Dashboards), които зареждат per-scope data, **никога** не hardcode pilot/default scope id. Винаги:
+
+1. Приема `scope` (registerType / instanceId / similar) като prop.
+2. Conditional render базиран на schema (`field_definitions`) — не на assumed pilot schema.
+3. Skip data loading изобщо когато schema няма съответния field.
+
+Pilot hardcoded references принадлежат само в pilot-only files. Shared/generic surfaces — schema-aware от ден 1.
+
+### Overlay vs floating — anchored UI elements
+
+UI element „anchored до известен trigger":
+
+**Absolute overlay (preferred default):**
+```tsx
+<div className="relative">
+  <input ... />
+  {showOverlay && (
+    <div className="absolute left-0 right-0 top-full z-30 mt-1 ...">
+      {/* overlay content */}
+    </div>
+  )}
+</div>
+```
+Anchor в document flow, container не clips — overlay scroll-ва с anchor.
+
+**Fixed + portal (escape hatch):**
+- Anchor е в overflow-restricted container (table cell, scrollable list item).
+- Overlay трябва да излезе извън clipping context.
+- **Изисква scroll listener** за reposition следвайки anchor:
+  ```tsx
+  useEffect(() => {
+    const reposition = () => { /* recalc top/left от trigger.getBoundingClientRect() */ };
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => { /* cleanup */ };
+  }, [open]);
+  ```
+
+Default to absolute overlay. Use fixed+portal само ако clipping forces hand.
+
+### Portalled content needs explicit event containment
+
+React events bubble през **React tree**, не DOM tree. Portalled content (createPortal към document.body) пак propagates events до parent React component. Когато parent има relevant onClick (e.g. row-click → детайл page), всички portalled overlays вътре трябва да stop-нат propagation на boundary:
+
+```tsx
+<div
+  ref={popoverRef}
+  onClick={(e) => e.stopPropagation()}
+  // ...
+>
+  {/* All interactive children inside — buttons, links, toggles */}
+</div>
+```
+
+Single boundary stop е DRY — по-добре от per-button stopPropagation.
+
+### Compose helpers — string + ReactNode duality
+
+Когато data има визуално богато representation (multi-line, color-coded, highlight-нати tokens) но и нужно canonical string form (empty-check, aria, audit log), pattern е TWO complementary composers:
+
+- `composeXxx(...) → string` — single-line canonical string. Used от: empty detection, aria labels, audit log diff, CSV export.
+- `composeXxxNode(..., query) → ReactNode` — rich rendering (multi-line, highlight, muted dates). Used от: cell `displayNode`, table cells, detail page read views.
+
+Both live в same module за discoverability. EditPopover/InlineEditPanel приемат и двете чрез `display` (string) + `displayNode` (optional ReactNode override).
+
+**Anti-pattern:** дублиране на logic в JSX directly (e.g. render multi-line inline в cell) → discoverability fails, audit log/CSV нямат matching representation.
+
+### Status badges and stable elements в dynamic rows
+
+Когато status indicator (badge, version, timestamp) sit-ва в same flex row с dynamic editor (e.g. inline edit), choose position carefully:
+
+- **Leftmost** позиция на stable element → editor expansion goes right, не помества stable.
+- **Rightmost** позиция → editor expansion bezopasно ако flex justify-between прави space.
+- **Middle** позиция → editor toggle moves stable left or right. Anti-pattern.
+
+### Conditional buttons live в always-existing container slots
+
+Buttons които се появяват/изчезват base on state ВИНАГИ live в container, който съществува regardless of conditional:
+
+- ❌ `{condition && <button>X</button>}` като sibling на required controls → row size jumps.
+- ✓ Persistent row с `<other-controls /> {condition && <button>X</button>}` → row stays, button slot appears/disappears.
+- ✓ Conditional button вътре в dropdown panel (which exists ON state — outside main flow).
+
+### Page width consistency между navigations
+
+Всички page-ове (list, detail, new entry, и т.н.) трябва да use Layout's common container width — да няма horizontal jump при transition между tях. Не въвеждай per-page wrappers с по-малки max-w-* (e.g. `max-w-4xl mx-auto` на detail) — те center-ват content на различна позиция от list-а и page edges не align.
+
+Ако single-column form в wide page изглежда airy, opt for:
+1. Full-width sections с native input widths (acceptable trade-off).
+2. Inline label + input layout per field — uses wide width effectively.
+3. **НЕ** half-baked left-aligned content (без mx-auto) — изглежда непълно.
+
+### Composite group columns — declarative entity+date pairs
+
+В table cells и detail page-а, когато имаме две полета които концептуално са „едно нещо" (entity + date, number + date), те трябва да се render-ват като **една композитна колона/cell + един композитен edit popover**.
+
+Backend declares чрез `group` key в schema:
+```python
+[
+    {"key": "x_number", "kind": "text", "group": "x", ...},
+    {"key": "x_date",   "kind": "date", "group": "x", ...},
+]
+```
+
+Frontend collapse-ва fields със same `group` в composite ColumnUnit. Display: text на ред 1, date на ред 2 (muted). Editor popover: два input-а side-by-side.
+
+### Multi-line cell rendering — entity+date / multi-value items
+
+В table cells, когато стойност е „entity + date" (composite group) или „multi-value with item-date", render-ваме на multi-line:
+
+- Line 1: text/number value (highlight-нато ако search активен)
+- Line 2: date (muted: `text-xs text-slate-500`)
+
+Подобрява четимостта в narrow columns. Прилага се чрез `displayNode` prop (`display` остава plain string за empty-detection).
+
+### Row-click navigation в tables
+
+Tables където всеки row представлява entity, целият row е clickable to детайл page-а. Cursor pointer на `<tr>`. Cell editors остават interactive чрез portal containment (виж „Portalled content needs explicit event containment").
+
+```tsx
+<tr
+  onClick={() => navigate(`/entries/${entry.id}`)}
+  className="group cursor-pointer ..."
+>
+  {/* cells with EditPopover — stopPropagation на popover boundary */}
+</tr>
+```
