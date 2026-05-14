@@ -385,3 +385,30 @@ Tables където всеки row представлява entity, целият
   {/* cells with EditPopover — stopPropagation на popover boundary */}
 </tr>
 ```
+
+### Hover tooltips — CSS-only, не native `title=` за primary discovery
+
+Native HTML `title=` показва browser tooltip след ~1-2s hover delay — fine за accessibility / occasional reminder, но твърде бавно за primary visual hint. Когато user-ът трябва да открие affordance чрез hover (abbreviated table headers, icon-only buttons без visible label, abbreviated badges) → build CSS-only tooltip като primary visual cue; native `title=` остава set за a11y fallback.
+
+```tsx
+<th className="group relative whitespace-nowrap ..." title={fullLabel}>
+  <div className="flex items-center gap-1">
+    {abbr}
+    <span
+      role="tooltip"
+      className="pointer-events-none invisible absolute left-0 top-full z-30 mt-1 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-md transition-opacity duration-100 group-hover:visible group-hover:opacity-100"
+    >
+      {fullLabel}
+    </span>
+  </div>
+</th>
+```
+
+Key:
+- `pointer-events-none` за да не блокира click-а на trigger-а
+- `z-30` over sticky elements (z-20)
+- `whitespace-nowrap` за да не wrap-не в narrow contexts
+- `transition-opacity duration-100` за gentle reveal
+- Parent с `relative` (или sticky/absolute) за anchor
+
+Test: ако очакваш user-ът да види tooltip-а в нормален flow → CSS tooltip. Ако е purely a11y fallback → native `title=` е достатъчен.
