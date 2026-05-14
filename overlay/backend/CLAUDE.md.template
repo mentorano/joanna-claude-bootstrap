@@ -1,0 +1,284 @@
+# Backend — FastAPI
+
+Точката на влизане е `app/main.py`. Стартирай с `./start_backend.sh` от root-а.
+
+## Слоеве
+
+```
+HTTP request
+  → app/api/<resource>.py        # Тънки route handlers — validation, auth, DI
+    → app/services/<resource>.py # Бизнес логика — без знание за HTTP
+      → app/models/<resource>.py # SQLAlchemy модели + queries
+        → PostgreSQL
+```
+
+**Правило:** Никога не пиши SQLAlchemy queries директно в API файла. Винаги през service.
+
+## Файлове
+
+| Файл | Отговорност |
+|---|---|
+| `app/main.py` | FastAPI app, CORS, middleware, lifespan, static mount |
+| `app/config.py` | `Settings` + `get_settings()` (cached). ВСЯКАКВА конфигурация е тук. |
+| `app/database.py` | Async engine, `async_session_factory`, `get_db()` dependency |
+| `app/logging_config.py` | structlog setup, `get_logger()`, request_id contextvar |
+| `app/api/` | Един файл на ресурс. Всеки изнася `router`. |
+| `app/models/` | SQLAlchemy ORM модели. Един клас на таблица. |
+| `app/schemas/` | Pydantic request/response модели. Огледало на API контракта. |
+| `app/services/` | Бизнес логика. Чисти функции/класове, които приемат `AsyncSession`. |
+| `tests/` | pytest, async с `pytest-asyncio`. |
+
+## Конвенции
+
+### Endpoints
+
+- API файлът НЕ съдържа SQL.
+- Всеки endpoint има `response_model`.
+- POST/PUT приемат Pydantic модел като `payload`, не отделни query params.
+- Domain exceptions от service → API превежда в HTTPException.
+
+### Services
+
+- Чисти функции с явни типове.
+- `db: AsyncSession` е първи аргумент.
+- Не хвърляй `HTTPException` от service — върни резултат/`None`/raise domain exception и API слоят го превежда в HTTP status.
+- IntegrityError от commit → винаги rollback преди raise.
+
+### Schemas vs Models
+
+- `app/models/<x>.py` — SQLAlchemy `X(Base)`.
+- `app/schemas/<x>.py` — `XCreate`, `XOut(BaseModel)` с `model_config = ConfigDict(from_attributes=True)`.
+- **Никога** не връщай ORM обект — винаги `XOut`.
+
+### Logging
+
+```python
+from app.logging_config import get_logger
+logger = get_logger(__name__)
+
+logger.info("event.created", entity_id=entity.id, user_id=user.id)
+```
+
+- Structured key=value, не f-strings.
+- `request_id` се добавя автоматично от middleware-а.
+- Никога не логвай passwords, tokens, PII.
+
+### Errors
+
+- `404` → `raise HTTPException(404, "Not found")` от API слоя.
+- `400` → validation е автоматичен от Pydantic; ръчна проверка → `HTTPException(400, ...)`.
+- `500` → не се хвърля експлицитно; FastAPI ще го направи от unhandled exception. Логни и пусни нагоре.
+
+## Тестове
+
+```bash
+pytest                      # всички тестове
+pytest tests/test_health.py # един файл
+pytest -k "create"          # филтър по име
+pytest -v -s                # verbose + stdout
+```
+
+- `tests/conftest.py` дава `client` fixture (httpx ASGI client). DB-то е override-нато на SQLite in-memory преди import на app — затова `get_settings.cache_clear()` в conftest е критичен.
+- Не мокай database — ползвай реална тестова DB (SQLite in-memory). Мок-натите тестове могат да минат, докато миграцията гръмва в prod.
+
+## Storage — статични ресурси
+
+**Convention:** ВСИЧКИ статични ресурси (user uploads, generated images, exports) отиват в S3 bucket-а конфигуриран чрез `S3_BUCKET_NAME`. **Никога на disk.**
+
+Helper: `app/services/storage.py` дава `generate_upload_url()`, `generate_download_url()`, `delete_object()`. Frontend upload-ва директно в S3 чрез presigned POST.
+
+Bucket-ът е private + AES256 encrypted + versioned. Не качвай нещо public read.
+
+## Logging — CloudWatch
+
+В production logs се shipват към CloudWatch group `<LOG_GROUP_PREFIX>/backend`. Когато `LOG_GROUP_PREFIX` е празен — logs остават само в stdout (полезно при pytest).
+
+Не commit-вай `print()` — винаги `logger.{info,warning,error}(...)` с keyword args.
+
+## Migrations (Alembic)
+
+```bash
+alembic revision --autogenerate -m "..."
+alembic upgrade head
+alembic downgrade -1
+alembic current
+alembic history
+```
+
+Преди commit на нова миграция: прегледай `alembic/versions/<file>.py` ръчно — autogenerate често пропуска неща (индекси, FK, defaults, enum changes).
+
+**Важно:** Всеки нов модел трябва да се импортира в `app/models/__init__.py` за да го види autogenerate.
+
+## Какво НЕ да правиш
+
+- Не пишеш SQL директно в API файл.
+- Не миксираш `requests`/`httpx` sync с async код — ползвай `httpx.AsyncClient`.
+- Не правиш `time.sleep` в async — `await asyncio.sleep`.
+- Не commit-ваш `.env`. Не commit-ваш `app.db`.
+- Не пишеш `print()` — `logger.info()`.
+- Не четеш `os.environ` директно — `get_settings().my_var`.
+- **Не правиш ad-hoc `python -c "..."` за backend smoke.** Имаш pytest infrastructure и running API. За service-level smoke → добавяш `pytest` test. За API-level smoke → `curl -s ... | jq`. И двете са allowlist-нати.
+- **Не ползваш `python -c "..."` като pipe stage** за parsing/formatting на JSON output. Винаги `jq` — поддържа iterate (`.[]`), conditional (`if then else`), defaults (`// "fallback"`), formatting (`"\(.field)"`), length (`| length`).
+- **Не пишеш `cd backend && source .venv/bin/activate && X`.** Извиквай venv binary директно (`backend/.venv/bin/pytest`) или `pytest` / `alembic` (allowlist-ът ги покрива). `source` иска permission всеки път, `cd && X` тригерира untrusted-hook warning.
+- **Не ползваш `sed -i` за код промени.** Edit tool с `old_string`/`new_string`. Reversible, diff показва се. Особено опасно за Python — лесно се чупи indentation. За multi-file: `Grep` + `Edit` всеки.
+
+## Soft-validation pattern (warnings, не блокери)
+
+Опционален pattern когато want soft data quality нудж-ове без hard-block:
+
+- **Validator-ите декларират trigger-полета.** На PATCH се пускат само тези, чиито triggers пресичат `changed_fields`. Иначе pre-existing issues fire-ват при всеки edit на несвързано поле.
+- **Релационните проверки се прилагат само ако поне едно от участващите полета е променено** (helper: `_is_relevant(ctx, *fields)`).
+- **Subject-field attribution.** Когато warning засяга няколко полета, атрибутирай warning-а към полето, **което потребителят редактира** (helper: `_subject_field`). Така warning се показва в same-cell popover-а.
+- **HTTP контракт.** Service raise-ва domain exception като `ValidationWarningsUnacknowledged(warnings)`; API превежда към 409 с body `{"code": "validation_warnings", "warnings": [...]}`. Клиент ack-ва чрез top-level `acknowledged_warnings: [codes]`; retry с full ack → save проходи.
+- **Audit log записва override-натите warnings** в `event_metadata.overridden_warnings`.
+- **Message style: само факти, без въпрос.** „Сигурна ли си?" е имплицитно от amber бутон. „X е под Y." (not „... Сигурна ли си?").
+
+## Pydantic input normalization
+
+Канонично storage = backend нормализира input-а **един път** при ingest, така че всичко по-надолу (display, search, validators) работи с предвидим формат. **Не разчитай на клиента да изпрати „чисти" данни.**
+
+```python
+def _normalize_bg_number(raw: str | None) -> str | None:
+    """„30300" / „30 300" / „303 00" → „30 300" (БГ интервал + запетая)."""
+    ...
+
+class MyFields(BaseModel):
+    @field_validator("price_field", mode="before")
+    @classmethod
+    def _normalize_price(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return _normalize_bg_number(v)
+        return v
+```
+
+**Правила:**
+- `mode="before"` — normalizer работи на raw input преди Pydantic type coercion.
+- **Идempotent.** Прилагане върху вече-канонична стойност връща същата стойност — нормализатор-ът може да тече и на read-path без side effects.
+- **Не блокирай на непарсваеми стойности.** Ако normalizer не може да парсне → върни raw stripped. Soft validation после fire-ва warning.
+- **Не нормализирай идентификатори.** Договорни № и подобни — оставяш ги както са. Нормализирай само числа/whitespace-чувствителни кратки полета.
+
+## Response enrichment — backend resolves display values, never N+1 от FE
+
+Когато frontend има нужда от display value, който живее в друга таблица (actor's name, section за entry), backend трябва да го **resolve-не сървърно и да го inline-не в response-а**. Frontend никога не прави N+1 fetches за display purposes.
+
+Pattern:
+
+```python
+async def _serialize_many(db: AsyncSession, items: list[X]) -> list[XOut]:
+    """Bulk variant — single User-lookup per distinct actor_id."""
+    actor_ids = {i.actor_id for i in items if i.actor_id is not None}
+    name_by_id: dict[int, str] = {}
+    if actor_ids:
+        rows = await db.execute(select(User.id, User.name).where(User.id.in_(actor_ids)))
+        name_by_id = {uid: name for uid, name in rows.all()}
+    return [_populate(XOut.model_validate(i), i, name_by_id) for i in items]
+```
+
+**Правила:**
+- **Bulk lookup за list endpoints.** Един SELECT `WHERE id IN (...)`, не N отделни `db.get`. Никакъв N+1.
+- **Display-only fields, не core data.** Не дублирай данни, които frontend така или иначе държи в кеш.
+- **Optional defaults в Pydantic** (`field_name: str | None = None`). Frontend се справя без тях.
+- **Lookup-ите живеят в API слоя**, не в service-а. Service-ът остава фокусиран върху мутации.
+
+## Dialect-portable JSON field access
+
+Когато JSON column-ата е декларирана като `JSON().with_variant(JSONB(), "postgresql")` — Postgres получава JSONB (с GIN индекс + `@>` operators), SQLite (тестове) пази plain JSON-as-TEXT. **Достъп до stoynost като текст** (за ILIKE / compare / display) НЕ ходи през `col[key].astext`:
+
+```python
+# ❌ Failва на runtime с:
+#   AttributeError: 'Comparator' object has no attribute 'astext'
+SomeModel.fields["key"].astext
+
+# ✅ Dialect-aware function call:
+from sqlalchemy import func
+if dialect_name == "postgresql":
+    return func.jsonb_extract_path_text(col, key)
+return func.json_extract(col, f"$.{key}")
+```
+
+Причина: `with_variant(JSONB, …)` не propagate-ва JSONB type comparator-а към generic JSON-а. Function-call формата е explicit и работи на двата dialect-а.
+
+## JSONB seeding — native Python структури, никога `json.dumps`
+
+Postgres JSONB колоната приема native Python dict/list — SQLAlchemy + asyncpg сериализират сами. **Никога не подавай `json.dumps(value)` string** — Postgres ще го запази като SCALAR jsonb string, не като ARRAY/OBJECT. Bug-ът не се вижда на pytest (SQLite — там JSON column-ата е TEXT). Catch-ва се live с traceback типа „cannot get array length of a scalar":
+
+```python
+# ❌ Postgres stored като jsonb string scalar
+op.execute(table.update().values(field=json.dumps(config)))
+
+# ✅ Native — JSONB serialize-ва като array/object
+op.execute(table.update().values(field=config))
+```
+
+Same rule важи за всеки INSERT/UPDATE/seed на JSONB колона. Verify-вай с `SELECT jsonb_typeof(col)` — трябва да е „array" или „object", не „string".
+
+## Strict-on-create, lenient-on-update normalization
+
+Pydantic v2 НЕ recurse-ва `exclude_unset` когато parent field-ът е `dict[str, Any]` (не nested model). Това значи: ако приемаш `fields: dict` в Pydantic и парс-ваш с strict nested model + `model_dump(exclude_none=False)`, ти ще dump-неш **всички defaults като None** — на PATCH това нулира съществуващи стойности.
+
+Pattern:
+
+```python
+def _normalize_for_entity(
+    fields: dict, entity_type, partial: bool = False
+) -> dict:
+    # На CREATE (partial=False): strict Pydantic validation, raise
+    # InvalidFields → API превежда към 422.
+    # На PATCH (partial=True): generic normalize над keys които WERE sent —
+    # никога не въвежда defaults.
+```
+
+Когато добавяш генерализирана normalization функция, **винаги имай `partial=True` flag** + skip strict validation за partial. PATCH path-а без него е дискретен bug.
+
+## Temporary specialization dispatch — с explicit eliminate criteria
+
+Когато generalize-ваш hardcoded specialized impl към config-driven generic impl, **запазвай specialized докато generic не достигне feature parity** — но винаги документирай explicit eliminate criteria:
+
+```python
+# Pilot entity (id=1) преминава през strict legacy validator за preserve на
+# pilot-era validation tests + behavior. Other entities минават през generic
+# config-driven flow. ELIMINATE TODO: когато inline-edit за non-pilot достигне
+# feature parity, eliminate-вай тоя dispatch.
+if entity.code == "PILOT" and not partial:
+    ...
+```
+
+Pattern: temporary specialization is OK during migration, но винаги:
+- Има explicit TODO comment с eliminate criteria.
+- Е документирано в STATUS key decisions.
+- Е tracked в ROADMAP-а на следващия chunk.
+
+Иначе debt се натрупва тихо.
+
+## Lookup tables (configurable enum-и) — винаги per-scope, никога global
+
+Когато добавяш нов lookup table за configurable enum, питай: **за какъв scope е** (per-type? per-instance? global?). Не start-вай global — restrict-вай scope-а максимално:
+
+```python
+# ❌ Global lookup — труден за scope-ване later, конфликти при multi-tenancy
+class GenericOption(Base):
+    code: str
+    label: str
+
+# ✅ Per-scope — extensible scope ако трябва later
+class ScopedOption(Base):
+    scope_id: int  # FK partition
+    code: str
+    label: str
+```
+
+Easier да разширяваш scope-а after (add column, не data migration) отколкото да го свиваш (изисква partition + data migration).
+
+## Audit log = Human Viewable Interface (опционален principle)
+
+Audit log-ът не е „technical debug log" — той е публичен прозорец към действията в системата. Затова всеки audit endpoint трябва да доставя нужните enrichments + филтри за човешки browse:
+
+- **Enrichments:** actor name (bulk lookup), target scope identity, reason поле, override metadata.
+- **Филтри:** target_type, target_id, action, actor_user_id, date_from/to, scope-id.
+- **Lightweight projection endpoint** (e.g. `GET /users/options`) — public-readable за filter dropdowns. Не разширявай admin-only `/users` — създай отделен projection.
+
+При добавяне на нов audit event:
+1. Service emit-ва AuditEvent с правилния `actor_user_id`.
+2. Ако target е нов resource type — допълни `_enrich` да го хидратира.
+3. Допълни `ACTION_LABEL` в frontend.
+4. Ако action има reason — попълни `event.reason` директно (не event_metadata).

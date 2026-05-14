@@ -1,0 +1,116 @@
+# Project status — {{PROJECT_NAME}}
+
+**As of {{DATE}}.** Updated at the end of each phase/chunk.
+
+> Handoff document. Read this first if you're picking up the project — either a new session, or a different agent/engineer. It snapshots what works, what's next, and the non-obvious decisions that aren't visible from the code alone.
+>
+> Companion docs to read next:
+> - `CLAUDE.md` (root) — product context, principles, architecture summary
+> - `README.md` — local dev quickstart
+> - `backend/CLAUDE.md`, `frontend/CLAUDE.md` — code conventions (auto-loaded by Claude Code)
+> - `_workspace/product-notes.md` (**gitignored**) — authoritative product knowledge with full source material citations
+
+---
+
+## TL;DR
+
+> One paragraph: what phase are we in, what's the end-state for current phase, what's currently working end-to-end.
+
+---
+
+## Done so far
+
+> One section per shipped chunk. Each section includes:
+> - **Commits:** SHA references
+> - Bullet list of what was actually delivered
+> - **Tests** count delta
+>
+> Keep history concise — only what's needed to understand current state. Earlier chunks can be one-line summaries.
+
+### {{CHUNK_NAME}} — {{DATE}}
+
+- (...)
+
+---
+
+## What's running locally
+
+> Concrete commands + version pins for local dev. Postgres port, Python version, venv setup, etc.
+
+```bash
+# To bootstrap fresh:
+docker run -d --name {{db-name}} ...
+python3.11 -m venv backend/.venv
+backend/.venv/bin/pip install -r backend/requirements.txt --index-url https://pypi.org/simple/
+cd frontend && npm install && cd ..
+source backend/.venv/bin/activate && cd backend && alembic upgrade head && cd ..
+./start_backend.sh    # terminal 1
+./start_frontend.sh   # terminal 2
+```
+
+---
+
+## What's next
+
+See **`ROADMAP.md`** for the full phased plan. Short version:
+
+> One-liner per upcoming chunk.
+
+---
+
+## Handoff за следваща сесия — къде да започне новата Claude
+
+> When a chunk is shipped partially, write explicit handoff here. Structure:
+>
+> **Текущо състояние:** (1-2 sentences)
+>
+> **Първият task за нова сесия е:** (concrete starting point)
+>
+> ### {{NEXT_CHUNK_NAME}} — какво остава
+>
+> 1. (task with file paths + acceptance criterion)
+> 2. (...)
+>
+> ### Известни gaps от тоя chunk
+>
+> - (gaps that future agent should know about)
+>
+> ### Файлове, ключови за следващия chunk
+>
+> - (concrete file paths)
+>
+> ### Run / verify
+>
+> (commands to verify project state)
+
+---
+
+## Key decisions made
+
+> Non-obvious choices that an incoming agent should know about, so they don't accidentally relitigate them. Number them.
+>
+> 1. **{{DECISION}}.** Reasoning. Lock-in.
+> 2. ...
+
+---
+
+## Known issues / gotchas
+
+> Project-specific incidents with concrete fixes. NOT general patterns (those live в `backend/CLAUDE.md` / `frontend/CLAUDE.md`). Numbered.
+>
+> 1. **{{ISSUE}}.** Symptom. Fix.
+> 2. ...
+
+---
+
+## Working mode notes (for future agents)
+
+> Owner profile, communication style, technical level. How to drive at the right granularity. Permissions when to ask vs. proceed.
+
+{{OWNER_NAME}} is the product owner. {{COMMUNICATION_STYLE}}. {{TECHNICAL_LEVEL}}.
+
+**Drive at the right granularity.** When {{OWNER_NAME}} approves a scope (a phase, a chunk), execute the WHOLE thing without asking at each sub-step. Check in at meaningful milestones, not per task. Ask permission only for: destructive/external actions (commit, push, delete), real product forks where >1 answer is defensible, or genuine blockers.
+
+**Be proactive.** Add small adjacent polish, surface gotchas, propose improvements at milestone reports. Senior-engineer behavior, not task-runner.
+
+**Bigger slices than they look on paper.** Group fine-grained slices into chunks; each chunk is one milestone, not one task.

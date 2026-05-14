@@ -1,0 +1,102 @@
+# Roadmap — {{PROJECT_NAME}}
+
+**Last updated:** {{DATE}}.
+
+> Forward-looking plan. `STATUS.md` tells you what's done as of now; this file tells you what comes next and why. Updated when chunks complete or when scope shifts.
+
+---
+
+## Vision
+
+> One-paragraph vision. What product we're building, who for, what changes when we're done.
+
+---
+
+## Three real phases
+
+> Phase boundaries reflect **what each phase needs from outside the team** to start. Example shape:
+>
+> - **Phase A — Standalone X.** Self-contained. Doesn't depend on external party.
+> - **Phase B — Y integration (static).** Depends on external's static output (e.g. CSV). No code-merge с runtime yet.
+> - **Phase C — Y live merge.** Actual integration with external runtime. Post-commit only.
+
+---
+
+## Demo targets
+
+| Demo | Audience | Needs |
+|---|---|---|
+| Internal team demo | {{INTERNAL_AUDIENCE}} | Phase A complete (localhost screen-share is fine) |
+| Client demo | {{CLIENT_AUDIENCE}} | Phase A + Phase B + real OAuth + production deploy |
+
+---
+
+## Where we are
+
+```
+Phase A ┃ Phase B ┃ Phase C
+━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━
+{{CHUNK_1}} ✅
+   ↓
+{{CHUNK_2}}  ← we are here, next chunk
+   ↓
+{{CHUNK_3}}
+   ↓
+→ Internal team demo
+   ↓
+Phase B
+   ↓
+→ Client demo
+   ↓
+Phase C — only if client says yes
+```
+
+Status legend: ✅ done · 🟡 in progress · 🔵 next · ⚪ planned
+
+---
+
+## Phase A — {{PHASE_A_TITLE}}
+
+> One paragraph: what we're building in this phase, who spends their day in it, when it's done.
+
+### A.{{CHUNK_NAME}} ✅ — {{CHUNK_DESCRIPTION}}
+
+**Commits:** {{SHA_LIST}}
+
+> Bullet list of what shipped. Focus on user-visible outcome + structural decisions.
+
+### A.{{NEXT_CHUNK_NAME}} ⚪ — {{NEXT_CHUNK_DESCRIPTION}}
+
+> What this chunk delivers. Bullet list. Acceptance criterion. Defer-rationale за items moved out of scope.
+
+---
+
+## Phase B — {{PHASE_B_TITLE}}
+
+> Deferred until what triggers Phase B start.
+
+### B.{{CHUNK_NAME}} ⚪
+
+---
+
+## Phase C — {{PHASE_C_TITLE}} — only if client says yes
+
+> Defer until client commits.
+
+### C.{{CHUNK_NAME}} ⚪
+
+---
+
+## Open prioritization questions
+
+> Decisions deferred to future sessions. Number them с context + tentative lean.
+>
+> - **{{QUESTION}}.** Options: ... Tentative lean: ... Decide before {{TRIGGER}}.
+
+---
+
+## Out of prototype scope (we know about these, deliberately not doing)
+
+> Things we explicitly are NOT doing in prototype phase. Helps future agents not accidentally start work on them.
+>
+> - {{ITEM}} — {{REASON}}.

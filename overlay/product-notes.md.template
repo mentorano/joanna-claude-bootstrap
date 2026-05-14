@@ -1,0 +1,146 @@
+# Product notes — {{PROJECT_NAME}}
+
+> **AUTHORITATIVE product knowledge for this project.** When this file and any other source disagree, this file wins.
+>
+> **Gitignored** — may reference real client material in `_workspace/` (PII). Distill into committable `docs/` only after anonymization.
+>
+> Structured by topic, not by source. Source cite legend:
+> - `[T1]`..`[TN]` — audio transcripts from {{OWNER_NAME}}
+> - `[REQ]` — `_workspace/legacy-docs/REQUIREMENTS.md` (if applicable)
+> - `[SCAN-NNNN]` — sample artifacts (if applicable)
+> - `[CONV-{{DATE}}]` — decisions made in conversation, not in any source doc
+>
+> Last updated: {{DATE}}
+
+---
+
+## 1. Problem framing
+
+> Why we're building this. Who asked, what they need solved.
+
+---
+
+## 2. Scope: in / out / future
+
+### In MVP (prototype phase)
+- (...)
+
+### Out of MVP scope
+- (...)
+
+### Future (post-MVP, post-signoff)
+- (...)
+
+---
+
+## 3. Data input pipeline (если приложимо)
+
+### What external party delivers
+- (...)
+
+### What external party does NOT deliver
+- (...)
+
+### Quality expectations
+- (...)
+
+---
+
+## 3a. The user persona — {{PERSONA_NAME}}
+
+> Name a single persona. Use a placeholder name from the field if helpful (e.g., „Aunt Ginche" for a municipal employee). Verbatim quotes from owner.
+
+- Pragmatic, not very digital-savvy / digital-savvy?
+- Just wants to {{PRIMARY_GOAL}} and move on.
+- Adoption friction is **the** primary risk — if the UX is heavier than the alternative, they won't switch.
+
+**Progressive user mindsets within the same role** — same person on different days:
+
+| Mindset | What they want | Implication |
+|---|---|---|
+| {{MINDSET_1}} | {{GOAL_1}} | {{UX_OPTIMIZATION_1}} |
+| {{MINDSET_2}} | {{GOAL_2}} | {{UX_OPTIMIZATION_2}} |
+| {{MINDSET_3}} | {{GOAL_3}} | {{UX_OPTIMIZATION_3}} |
+
+**Hard rule:** never let the secondary/tertiary features distract or intimidate the primary persona.
+
+---
+
+## 4. Roles & permissions
+
+| Role | Browse | Create | Edit | Delete | Admin |
+|---|---|---|---|---|---|
+| {{ROLE_1}} | ✓ | ✗ | ✗ | ✗ | ✗ |
+| {{ROLE_2}} | ✓ | ✓ | ✓ | (soft) | ✗ |
+| {{ROLE_3}} | ✓ | ✓ | ✓ | (soft) | ✓ |
+
+---
+
+## 5. UX preferences (explicit from owner)
+
+> Direct quotes + reconciliation when sources conflict.
+
+### {{UX_PRINCIPLE_1}}
+> Quote. Implication. How implemented.
+
+---
+
+## 6. Dashboard / behavioral framing (if applicable)
+
+> Strategic framing — what the dashboard's primary job is. Beyond just informational?
+
+---
+
+## 6a. Live data-entry validation (if applicable)
+
+> Warning patterns, override flow.
+
+---
+
+## 6b. Consistency & "Don't Make Me Think"
+
+> Pointers to what owner wants kept consistent (one search, one toast, one dialog, etc.).
+
+---
+
+## 7. Domain findings (если приложимо)
+
+> Structured findings from real artifacts (scans / CSVs / interviews). Schema variations, naming conventions, edge cases.
+
+---
+
+## 8. Open questions (consolidated, single source)
+
+Status legend: 🟢 answered · 🟡 partially answered · 🔴 fully open · ⚪ deferred (not blocking prototype)
+
+### For {{OWNER_NAME}} — internal decisions
+
+| # | Question | Status | Notes |
+|---|---|---|---|
+| J-01 | (...) | 🔴 | (...) |
+
+### For client — pending sync
+
+| # | Question | Status | Notes |
+|---|---|---|---|
+| C-01 | (...) | 🔴 | (...) |
+
+---
+
+## 9. Conflicts between sources to resolve
+
+| Source A | Source B | Issue | Resolution direction |
+|---|---|---|---|
+| (...) | (...) | (...) | (...) |
+
+---
+
+## 10. Slice plan — chronological build path
+
+> The **committed roadmap** lives in `ROADMAP.md` at repo root. The plan below is preserved as historical reference (original chunking before any chunks shipped). When the two disagree, `ROADMAP.md` wins.
+
+---
+
+## 11. Methodology
+
+> Working mode, harness setup, agent / skill decisions. References to memory files и conventions.

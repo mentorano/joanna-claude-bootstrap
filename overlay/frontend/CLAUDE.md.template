@@ -1,0 +1,257 @@
+# Frontend — Vite + React 19 + TypeScript + Tailwind v4
+
+Точката на влизане е `src/main.tsx`. Стартирай с `./start_frontend.sh` от root-а.
+
+## Stack
+
+- **Vite 8** — dev server + build (TypeScript transpile + ESM bundling)
+- **React 19** — UI
+- **TypeScript 5.9** — strict mode
+- **TailwindCSS v4** — utility-first CSS, без `tailwind.config.js` (новата v4 конфигурация е inline в `index.css` чрез `@theme`)
+- **TanStack Query v5** — server state, cache, retry
+- **Axios** — HTTP клиент с interceptors
+- **React Router v7** — routing
+- **Recharts** — графики (опционално)
+- **Lucide React** — иконки
+
+## Слоеве
+
+```
+Page (route)
+  → Hook (useQuery / useMutation)
+    → API client (axios)
+      → backend /api/*
+```
+
+**Правило:** Никога не вика `axios.get` директно от компонент. Винаги през React Query hook.
+
+## Файлове
+
+| Папка | Какво стои тук |
+|---|---|
+| `src/api/client.ts` | Една axios инстанция за целия app. Interceptors за logging/errors. |
+| `src/hooks/` | По 1 hook на ресурс. |
+| `src/types/` | TypeScript типове, споделени между API и компоненти. |
+| `src/components/` | Преизползваеми UI блокчета. Без бизнес логика. |
+| `src/pages/` | Route компоненти. Викат hooks, рендерират components. |
+| `src/utils/` | Помощници (logger, formatters, типови guards). |
+
+## Конвенции
+
+### Hooks (React Query)
+
+- Query keys → винаги константа в hook файла, не string literal в компонент.
+- `staleTime` глобално в `App.tsx`; override само ако ресурсът е критично свеж.
+- Mutations → винаги `onSuccess: invalidate`.
+
+```ts
+const KEYS = {
+  all: ["resource"] as const,
+  detail: (id: number) => ["resource", id] as const,
+};
+
+export function useResource() {
+  return useQuery({
+    queryKey: KEYS.all,
+    queryFn: async () => (await api.get<Resource[]>("/resource")).data,
+  });
+}
+```
+
+### Компоненти
+
+- Винаги именован `Props` интерфейс.
+- Tailwind класове directly. Никакви inline `style={{}}` освен за наистина динамични стойности.
+- `key` от стабилен ID, не индекс.
+
+### Pages
+
+- Loading / error / empty — explicit branches. Никога не приемай че `data` съществува.
+- Page компонент е `default export`.
+
+### Типове
+
+- Огледало на Pydantic схемите в backend.
+- `created_at: string` (не `Date`) — JSON няма Date.
+
+### Logging
+
+```ts
+import logger from "../utils/logger";
+logger.info("event.name", { context: "..." });
+```
+
+### Axios paramsSerializer
+
+```ts
+export const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api",
+  withCredentials: true,
+  paramsSerializer: { indexes: null },  // FastAPI list[T] = repeated keys without [] brackets
+});
+```
+
+## Build
+
+```bash
+npm run build       # tsc -b + vite build → dist/
+npm run preview     # сървира dist/
+npm run lint        # eslint
+```
+
+## Error handling
+
+- `App.tsx` обвит в `ErrorBoundary`.
+- 404 fallback route (`*` → `NotFound`).
+- Нови env променливи → добавяй ги и в `src/vite-env.d.ts`.
+
+## Какво НЕ да правиш
+
+- **Не fetch-ваш с `useEffect + axios.get`.** Използвай React Query.
+- **Не правиш inline styling за статични стойности.** Само Tailwind класове.
+- **Не пишеш `any` без коментар защо.** Ако TS не може да изведе типа — поправи API типа.
+- **Не commit-ваш `node_modules/` или `dist/`.**
+- **Не console.log-ваш в production код.** Ползвай `logger`.
+- **Не impl-ваш auth от нула.** Ползвай готови pattern-и (cookie session от backend, не localStorage за tokens).
+- **Не маха `ErrorBoundary` от App.tsx.**
+- **Не ползваш `sed -i` за TSX / CSS промени.** Edit tool с `old_string`/`new_string`. Особено опасно за multi-line Tailwind класове.
+- **Не пишеш `cd frontend && X`.** `npm` командите работят с относителен path или `npm run <task>`.
+
+---
+
+## Project-specific UX rules
+
+> Тези conventions са collected from a single project's experience and apply broadly. Adjust per project с product-specific persona / labels / domain.
+
+### Персонажът е [PERSONA — заместете]
+
+Default user е [описание на персона]. **Adoption friction е главният риск.** Преди всеки UX избор питай: "Това ще накара ли персонажа да се замисли, забави или притесни?" Ако да — грешен избор, колкото и да е елегантен.
+
+### Inline edit, без модал на всеки click
+
+- Click на клетка → inline editing на същото място.
+- Save на blur, Cmd-Enter, или малък бутон.
+- Audit log записва безшумно.
+- **Modal** само за: destructive actions, final operations, изцяло нов запис. Не за рутинни корекции.
+
+### Един от всеки UI елемент
+
+Една единствена компонента на проекта за:
+- **Search** — с конфигурируем scope (all fields / specific field). Не пиши втори search компонент дори да трябва "малко по-различен" — добави prop.
+- **Toast/notification** — един pattern, варианти по severity.
+- **Confirmation dialog** — един "сигурна ли си?" компонент. Не пиши ad-hoc `window.confirm`.
+- **Table** — една таблица с per-resource колонна конфигурация. Същото поведение за filter, sort, empty state, row actions menu.
+
+Когато pattern се ползва на > 1 място — направи компонент. Не дублирай "защото е по-бързо за тук".
+
+### Search-first home screen
+
+- Голям search box най-горе.
+- Scope selector до него.
+- Резултатите показват **целия запис**, не summary.
+- `Нов запис` е голям, видим primary action.
+- Hidden записи не се виждат по подразбиране.
+
+### Warnings, не блокери
+
+Когато потребителят прави нещо подозрително:
+- Покажи warning + ask confirm
+- Override → save проходи, audit log записва override-а
+- Никога не блокираме изцяло
+
+### Don't Make Me Think
+
+Книгата на Стив Крук — лайтмотивът. Спомни си я, преди да добавиш още един бутон, още един dropdown, още един "помощен" tooltip.
+
+### Не подскачай UI-я при state change
+
+Преходите между read↔edit, появата на warning panel-и, отваряне/затваряне на popover — **никога не местят** съседни елементи. Конкретни rules:
+
+- **`table-layout: fixed` + explicit `size` per колона.** Auto-layout преразпределя ширини при content change.
+- **Inline edit input height = read display height.** Same `py-N`; ✓/✕ inline с input-а в `flex items-center`, не на нов ред.
+- **Бутончетата държат фокуса при click** (`onMouseDown={(e) => e.preventDefault()}`). Иначе blur → attemptSave preempt-ва cancel handler-а.
+- **Floating popovers** → Portal към `document.body`. Не се клипват от `overflow-x-auto`, не отместват съдържание.
+- **Conditional render на action element до други controls = anti-pattern.** Или (a) move в popover/dropdown (no layout impact), или (b) винаги render с `invisible pointer-events-none` placeholder когато inactive. **Никога** `{condition && <button>}` като sibling в flex row.
+- **Filter / options panels = absolute-positioned dropdown, не inline expansion.** Pattern: panel root е `relative`, panel body е `absolute right-0 z-30 mt-2 w-[min(720px,calc(100vw-2rem))]` с outside-click + Esc close.
+- **Counter / status indicators = stable footer slot, не inline до input-а.**
+- **Empty fields = вече в edit mode**, не „клик за редакция".
+
+### Filter/control row design — semantic clusters + uniform heights
+
+Когато няколко interactive controls стоят на един ред, те трябва да изглеждат като един семантичен cluster и да имат еднаква visual weight:
+
+- **Един semantic cluster per row.** Search input + scope select + filter chip + clear button са „с какво филтрирам списъка" — един cluster.
+- **Heights explicit чрез `h-N` Tailwind classes.** Native inputs (date, search) имат browser-default heights които variарat (`<input type="date">` често е по-висок поради calendar icon). Explicit `h-9` (e.g.) force-ва ги еднакви.
+- **Range fieldsets: placeholder „От / До", не vertical sub-labels.** Вложени `<label>От</label>` ги push-ват вертикално → стъпала. Use `placeholder="От"` + `aria-label`.
+- **Multi-select default за filter dropdowns, чийто underlying field е array.** Backend също трябва да приема `list[T]` параметър.
+
+### Clear / reset actions — scoped to single component
+
+Не правя „global clear" бутон, който чисти всичко в няколко компонента. Confusing scope.
+
+- **Search input има own ×** — чисти само search query.
+- **Filter panel има own „Изчисти филтрите"** в горната част на dropdown-а — чисти filter values, не search.
+- **EmptyState dead-end recovery** може да предложи global „изчисти всичко" — единствено там оправдан, потребителят е заседнал.
+
+Когато добавяш нов clear button: **първо питай за какъв scope е**. Default: local.
+
+### Page title carries scope identity; nav stays scope-free
+
+Когато потребителят е навлязла в scope (конкретен ресурс / детайл / админ), **заглавието на страницата носи идентичността на този scope**, не родово. Header nav остава scope-free.
+
+### Whole-element affordance
+
+Когато един card / row / panel представлява една entity и primary action-ът е „отвори/виж", **цялото нещо е кликабъл**, не само бутон в ъгъла.
+
+```tsx
+<section
+  role="button"
+  tabIndex={0}
+  onClick={() => navigate(href)}
+  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(href); } }}
+  className="cursor-pointer ... hover:border-slate-400 hover:shadow-sm focus-visible:ring-2 ..."
+>
+  ...
+  <Link to={otherHref} onClick={(e) => e.stopPropagation()}>...</Link>
+</section>
+```
+
+Nested interactive elements с **различен** destination → `onClick={(e) => e.stopPropagation()}`. Когато всички действия водят на едно и също място — премахни secondary бутона.
+
+### ConfirmDialog за state-mutating actions
+
+Архивиране, деактивиране, и всяко друго действие което **променя state** в начин, който не е тривиален undo на същия клик → минава през `ConfirmDialog`. Не само за „delete".
+
+Симетричното action (unhide / reactivate) **не** минава през ConfirmDialog.
+
+### Read-only варианти на интерактивни компоненти
+
+Когато добавяш нов interactive компонент (input / popover / panel), **планирай read-only вариант от ден 1**. `readOnly?: boolean` prop, не отделен компонент. Role-based UI gating има нужда от read-only render на същите surfaces.
+
+### Progressive disclosure — показвай UI elements само когато имат смисъл
+
+Search input, advanced filters, и подобни „secondary" affordances се появяват само когато достигат threshold-а на полезност. Под threshold-а са визуален шум.
+
+`const showSearch = (instances?.length ?? 0) >= 4;` — search-ът не съществува докато не имаме 4+ items.
+
+### Affordances винаги видими
+
+Персоната не hover-ва за да открие какво може. Pencil icons, save/cancel бутончета — **всичко** видимо. Изключение: dense таблици, където pencil на hover е компромис заради визуалния шум.
+
+### URL-synced state за filterable списъци
+
+URL params собственичат query state-а на filterable страници, не local React state. Shareable links. Виж reference implementation.
+
+- **Празни стойности → `sp.delete(k)`**, не `sp.set(k, "")`.
+- **`setSearchParams(next, { replace: true })`** за всеки keystroke — иначе history-то се пълни.
+- **Не дублирай URL state в local React state.** Един source-of-truth.
+- **Не сериализирай всички текущи params** при navigation към нов scope.
+
+### `displayNode` prop за highlight без да чупиш empty-detection
+
+Interactive cell components, които приемат `display: string`, могат да приемат optional `displayNode?: ReactNode` за render-only override (search highlight, formatting). Empty-check винаги използва canonical `display` string:
+
+```tsx
+const renderedDisplay = displayNode ?? display;
+const isEmpty = display.trim() === "";  // ⚠ NOT на displayNode
+```

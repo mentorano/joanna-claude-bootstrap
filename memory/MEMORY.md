@@ -1,0 +1,9 @@
+- [Driver mode — chunk-granularity execution + persona exhaustion pass](feedback_driver_mode.md) — Execute whole chunks; ask only for destructive actions, real product forks, or blockers. Treat scope as direction; at chunk end run persona-usage exhaustion pass before declaring done.
+- [Documentation reflex](feedback_doc_reflex.md) — Proactively capture stances/decisions/gotchas as they emerge; decision tree for where each kind goes; chunk-end checkpoint.
+- [Default to persistence — audit and DB-worthy state](feedback_audit_default.md) — Anything forensically meaningful gets persisted, not ephemeral. Audit-every-mutation + override/context metadata + failed-mutation logging.
+- [Browser smoke tests — prefer visible Chrome](feedback_browser_smoke.md) — Default to visible Chrome via MCP for chunk-end smoke; headless agent-browser only when owner isn't watching.
+- [Backend smoke pattern — pytest or curl, not `python -c`](feedback_backend_smoke_pattern.md) — Use pytest tests or curl-to-API for backend smoke; avoid `cd && source venv && python -c` heredoc.
+- [Prefer native tools over shell escapes](feedback_prefer_native_tools.md) — Edit not `sed -i`, `git -C` not `cd && git`, venv binary not `source activate`, Grep/Glob not shell pipes.
+- [Persona-friendly defaults](feedback_persona_defaults.md) — When choosing a UX default, pick the more-visible / lower-effort option. Don't make them hover, keyboard, or click-to-reveal basic things.
+- [Mock the breadth, deliver the depth](feedback_mock_breadth.md) — When multi-X feature, render all X-en in UI early (with real names); functional depth follows. Yields better design conversations.
+- [Native HTML affordances — don't duplicate](feedback_native_affordances.md) — Before adding custom UI next to a native input, check what the browser already provides. `<input type="search">` has own ×; hide it via CSS pseudo-element if you add own.

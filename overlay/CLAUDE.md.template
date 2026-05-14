@@ -1,0 +1,64 @@
+# {{PROJECT_NAME}} — Claude project context
+
+> {{PROJECT_DESCRIPTION_ONE_LINE}}
+
+## Where to read for context
+
+**This file** is the always-loaded entry point. Read these in order when starting a new session or needing depth:
+
+1. **`STATUS.md`** — current project state: what's done, what's running locally, key decisions, known issues. Committed.
+2. **`ROADMAP.md`** — forward-looking plan: where we are in the build, what comes next, what's deferred, open prioritization questions. Committed.
+3. **`_workspace/product-notes.md`** (gitignored) — **authoritative** product knowledge: persona, scope, UX principles, data pipeline, open questions. Source of truth for product, but private (refers to real client material).
+4. **`backend/CLAUDE.md`** — backend code conventions (auto-loaded by Claude Code).
+5. **`frontend/CLAUDE.md`** — frontend code conventions (auto-loaded by Claude Code).
+6. **`_workspace/legacy-docs/`** (gitignored, historical) — earlier-harness MDs if any.
+
+Real client material (PDF scans, OCR artifacts, audio recordings, transcripts) lives in `_workspace/` and is **gitignored** — never commit it. Synthetic / anonymized fixtures live in the repo and CAN be committed.
+
+## Team
+
+- **{{OWNER_NAME}}** — {{OWNER_ROLE}}. {{OWNER_NOTES}}.
+- This Claude Code harness is **the developer**. There is no in-house classical programmer on the team.
+
+## Product principles (must always be honored)
+
+> These are placeholders — replace with project's own. Examples below from origin project (Digital Archives) for shape.
+
+1. **Persona-first.** The persona is {{PERSONA_NAME}}. If a UX choice would make them hesitate, slow down, or feel intimidated — it's wrong, no matter how clever.
+2. **Visible affordances, not hover-only.** Persona doesn't hover to discover what's clickable. Leverage hover only for *secondary* affordances on dense surfaces.
+3. **One of each UI element across the system.** One search component (configurable scope), one toast pattern, one confirmation dialog, one table component. Consistency over local optimization.
+4. **No hard delete, ever** (when applicable). Business records get status transitions, users deactivated, etc. Audit retains everything.
+5. **Audit every mutation.** Field-level changed values, actor, timestamp. The audit log has a *Human Viewable Interface* — searchable.
+6. **Warnings, not blockers, for suspicious data.** Show warning → ask confirmation → user overrides → audit logs the override. Never silently block.
+7. **Don't Make Me Think.** Steve Krug. Every screen.
+8. **Inline cell editing, NOT modal-on-click.** Modals only for: destructive actions, final operations, brand-new record creation.
+9. **State transitions don't move things.** Read↔edit, popover open↔close, warning panel appear — must not shift surrounding layout.
+
+> Add project-specific principles here. Keep это list short, opinionated, non-negotiable.
+
+## Architecture summary
+
+> Replace with project's domain model. Example from Digital Archives:
+>
+> Built on Mentorano's `auto_demo` template (FastAPI + React + Aurora) — see `backend/CLAUDE.md` and `frontend/CLAUDE.md` for layered conventions. We extend by replacing the `Widget` example resource with our real domain:
+>
+> - {{DOMAIN_ENTITIES}}
+> - {{KEY_RELATIONSHIPS}}
+> - {{AUDIT_TRAIL}}
+>
+> The model is justified from day 1 — see `_workspace/product-notes.md` section X for actual schema variations.
+
+## Prototype constraints
+
+> Adjust per project. Common items:
+
+- **DB:** Postgres in Docker on `localhost:55432`. Switch to Aurora later by removing `DATABASE_URL` override.
+- **Python venv** must be created with explicit `python3.11` — system `python3` is 3.9 on macOS.
+- **pip install** needs `--index-url https://pypi.org/simple/` to bypass Mentorano CodeArtifact.
+- **No AWS credentials wired** in prototype phase. S3 mocked / served from `_workspace/` paths.
+
+## Status
+
+> Update when phase changes. E.g.:
+>
+> Prototype phase from {{DATE}}. Plan: tight slices, demo-able to client. After client signoff, possible rewrite from 0 with production-grade team. See `_workspace/product-notes.md` section X.
