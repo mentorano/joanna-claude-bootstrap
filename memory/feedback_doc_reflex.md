@@ -34,6 +34,7 @@ Don't wait for Joanna to ask. While working, watch for documentation-worthy mome
 4. Did the chunk reveal a new backend/frontend pattern?
 5. Did the chunk change the plan in `ROADMAP.md`?
 6. Did Joanna give working-mode guidance worth a memory file?
+7. **Did this chunk reveal any cross-project patterns to promote to `joanna-claude-bootstrap`?** (a pattern that would apply equally to a hypothetical next project, not just this one — e.g. JSONB seeding gotcha, native HTML affordances, „не подскачай UI-я" rules; **NOT** project-specific items like persona name, domain labels, schema config). If yes → propose to Joanna and, on approval, sync to `~/Documents/Projects/joanna-claude-bootstrap/` and push.
 
 Apply continuously, not only at chunk end. The chunk-end checkpoint is a safety net — the primary mechanism is: when the moment happens, name it out loud ("noting this — worth elevating to a principle") and write it before continuing.
 
