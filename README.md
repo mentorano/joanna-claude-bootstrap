@@ -67,6 +67,27 @@ git add -A && git commit -m "Apply joanna-claude-bootstrap overlay"
 
 The script copies `.template` files into their target locations (without the .template suffix), substitutes simple placeholders like `{{PROJECT_NAME}}`, и optional-но bootstrap-ва memory directory ако се изпълнява в Claude Code home folder.
 
+## Pre-commit hook — automatic reminder
+
+Optional but recommended. Installs a `pre-commit` git hook that detects staged changes to `CLAUDE.md` files / memory feedback files / `STATUS.md` etc. and reminds you to consider promoting cross-project patterns back to this repo.
+
+**Install в съществуващ проект:**
+```bash
+~/Documents/Projects/joanna-claude-bootstrap/hooks/install.sh /path/to/project
+```
+
+Creates a symlink — future bootstrap hook updates apply automatically без reinstall.
+
+**Behavior:**
+- Runs on `git commit`.
+- Scans staged files for CLAUDE.md / memory paths.
+- If matches found → prints banner с list of changed files + filter test guidance.
+- **Non-blocking** — commit-ът проходи без интервенция. Just a reminder.
+- Suppress per-commit: `BOOTSTRAP_AUDIT_SKIP=1 git commit ...`
+
+**Why a pre-commit hook (vs Claude-session-only reminder):**
+Hook triggers at the precise moment when a change is being finalized — не depend-ва от това дали си в Claude session. Survives terminal usage, IDE commits, GitHub Desktop, etc. Standard, debug-vable, transparent.
+
 ## When to update this overlay
 
 Когато научим нов **cross-project** convention в реален проект:
