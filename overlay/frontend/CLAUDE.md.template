@@ -412,3 +412,42 @@ Key:
 - Parent с `relative` (или sticky/absolute) за anchor
 
 Test: ако очакваш user-ът да види tooltip-а в нормален flow → CSS tooltip. Ако е purely a11y fallback → native `title=` е достатъчен.
+
+### Visual baseline at V1 — не V2
+
+UI features V1 трябва вече да включват visual hierarchy + design tokens + chart palette overrides + icons. Functional-but-flat V1 предизвиква predictable „looks dry / ugly" feedback и forces visual iteration което може да се избегне.
+
+Checklist преди V1 ship:
+- **Mixed card sizes** — HERO row (big numbers / metrics) + secondary cards + optional footer. Не „all-cards-same-size flat grid".
+- **Design tokens, не raw Tailwind colors** — `bg-card`, `text-foreground`, `border-border`, `bg-muted`, `text-muted-foreground` (shadcn tokens).
+- **Chart color tokens проверени** — shadcn default chart-1..5 typically grayscale. За dashboards/analytics: override в `index.css` с multi-color palette преди да build-наш първия chart. „После ще го override-нем" — chart looks unfinished.
+- **Icons в headers** — Lucide icons next to titles, оцветени с accent color. Не plain text titles.
+- **Trend chips / badges / mixed typography** за numbers analytics: trend chips (↑/↓ %) emerald/rose color-coded, Badge components for status tags, tabular-nums за numbers.
+- **Visual separation между sections** — zone headers, subtle background contrast.
+
+### One pattern per interaction — declared upfront за feature
+
+Когато feature има multiple cards/components с similar controls (period selector, scope selector, filter, granulation): **declare ONE pattern upfront** преди да build-наш първата card. Не pick-per-card.
+
+Запиши декларацията в коментар на feature composer — не leave it implicit. Когато добавиш нов component с similar control: use declared pattern. Ако не пасва — стoп, питай, и update declaration globally.
+
+Examples (project-specific examples in project frontend/CLAUDE.md):
+- Period selector → Tabs everywhere
+- Granulation (Day/Week/Month/Year) → Tabs
+- Scope selector → Select (>4 options)
+- Confirmation → ConfirmDialog
+- Loading → Skeleton shape-matched
+
+Generalizes „one of each UI element" rule to **one pattern per interaction type**.
+
+### Cache invalidation audit на нова TanStack query
+
+Когато добавя нов `useQuery({ queryKey: ["X"] })` — задължителен audit:
+
+1. Кои mutations affect-ват X data?
+2. За всяка такава mutation, провери `onSuccess`: invalidate-ва ли `["X"]`?
+3. Ако не → add `qc.invalidateQueries({ queryKey: ["X"] })`.
+
+Default React Query поведение: `staleTime: 60_000` globally → данните stale-while-revalidate 60s; не refetch automatic. Без explicit cache invalidation, нови queries silently stale след mutations.
+
+При adding new query: edit existing mutation files в **same PR**. Не leave it „за after" — забравя се.

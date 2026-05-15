@@ -14,13 +14,22 @@ Three failures в SAME chunk (A.Multi-register-Polish):
 
 Joanna explicit feedback: „това искам да ти е рефлекс, не да трябва да итерираме." Това е **trust mechanic** в workflow-а — extension chunks стават 2x дълги от необходимото ако всеки feature-parity gap трябва тя да хваща и да ми casa да добавя.
 
-## ЗАДЪЛЖИТЕЛЕН pre-implement checkpoint (преди да напиша JSX/код на extension)
+## ⚠ Scope clarification (2026-05-15 — dashboard chunk reflection)
 
-Когато expand-вам функционалност (нов entity / нов register type / нов page variant / нов component на същия pattern):
+Правилото беше framed като „extension on existing pattern" — multi-register style. Това е твърде тесен trigger. Реалността: **почти всичко е extension** на foundation, която вече съществува (shadcn primitives, design tokens, audit patterns, navigation conventions). Когато feature „feels new" (e.g. dashboard беше „поведенческа нова") — това НЕ е сигнал да skip-ваш inventory. Wrong signal. В dashboard-а: shadcn primitives just-installed + grayscale chart tokens + Card variants — inventory преди V1 щеше да предотврати „грозно/постно" iteration.
 
-**1. Намери pilot/existing analogue.** Един или повече файлове, които вече решават подобен problem (различен entity, същия pattern). За multi-register: pilot IV-та EntryDetail + EntriesList. За нов admin page: existing /admin/users page. И т.н.
+**Правилото се прилага винаги когато добавям UI feature**, дори ако feature feels-greenfield или foundation е just-installed.
 
-**2. Inventory всичките features на pilot-а** преди да започна. List ги в head или в plan. Конкретно за UI: какво има — list of features:
+## ЗАДЪЛЖИТЕЛЕН pre-implement checkpoint (преди да напиша JSX/код)
+
+Когато започвам ANY new UI feature (extension OR feels-greenfield):
+
+**1. Намери pilot/existing analogue ИЛИ foundation.** Един или повече източници на pattern. Може да е:
+- **Pilot component** (за extension): pilot IV-та EntryDetail / EntriesList → нов register variant.
+- **Foundation library** (за feels-new): shadcn primitives в `src/components/ui/` + design tokens в `index.css` + chart-color tokens + Lucide icons. „Foundation" не е „pilot" но е inventory-able set от строителни блокове.
+- **Adjacent pages** (за нов page): existing Home / EntryDetail / AuditLog layout patterns.
+
+**2. Inventory всичките features / tools на източника** преди да започна. List ги в head или в plan. Конкретно за UI:
    - Layout (single/multi column? sections? grid?)
    - Sortable/filterable elements
    - View modes (compact/detailed? toggles?)
@@ -33,6 +42,14 @@ Joanna explicit feedback: „това искам да ти е рефлекс, н
    - Search highlighting
    - Bulk actions
    - Audit links
+
+   За foundation inventory (feels-new feature): какви primitives + tools са налични:
+   - shadcn primitives в `src/components/ui/` — кои са install-нати? (Card, Badge, Tabs, Select, Skeleton, etc.)
+   - Design tokens в `index.css` — `--background`, `--card`, `--primary`, `--muted`, `--accent`, `--chart-1..5`
+   - Chart palette — grayscale ли е, или multi-color? Override ли трябва?
+   - Icon library — Lucide
+   - Chart library — Recharts
+   - Common patterns в analogous pages — кои са, кои се reusable
 
 **3. Match всеки feature в новия implementation.** Не за всяко „greenfield версията не го нуждае" — pilot-ът има these features защото Joanna ги е validate-нала. Default-ът е: матч-вай. Само ако ESCAPe (конфликт/невъзможност) → питай.
 

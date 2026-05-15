@@ -49,6 +49,25 @@ A.Multi-register-Polish session (2026-05-14) демонстрира high-cost it
 - Validation error: warning panel pushe ли content под?
 - Network failure: error state graceful ли е?
 
+**7. Visual self-review pre-„done" (добавено 2026-05-15 от dashboard chunk).** Open the page в browser. Scroll целия surface. Hover на 3-5 interactive elements. Click 2-3 tabs / dropdowns / period selectors. Conscious проверки:
+- **Long text wrap** — labels, descriptions, headers all readable без crop / overflow?
+- **Large numbers fit** — Y axis labels не se cropping (chart width adequate)?
+- **Sort order** — lists поднредени както intent-а казва (desc by price, asc by date, etc.)?
+- **Truncated/abbreviated labels** — tooltip / full disclosure available on hover?
+- **Empty states** — какво се показва на празна data?
+- **Loading skeleton** — shape matches actual content?
+- **Tab switches** — preserve context (no flash to empty)?
+- **Mixed scope** — descriptions adapt to selected scope (не hardcoded „Sek IV")?
+
+Common catches през тоя checkpoint (dashboard chunk):
+- Y axis crop (нужен по-голям width за large compact labels)
+- Donut label truncation mid-word (нужен line-clamp + title attr)
+- Date too small в Top deals (10px muted → 12px font-medium)
+- Select dropdown показва raw value на trigger когато lookup fails
+- Hero card icons looking button-like (color-mixed background instead of plain icon)
+
+5-10 минути self-review = catches много „Joanna хваща → revert и поправи" loops.
+
 ## Кога важи
 
 При **всяка** UX change. Дори „малка" promяна може да има неочаквани side effects (e.g. добавям row click → counter-intuitive за all cell editors).
