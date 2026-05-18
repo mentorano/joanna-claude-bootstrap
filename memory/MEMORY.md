@@ -6,3 +6,6 @@
 - [Audit default](feedback_audit_default.md) — Value statement: anything forensically meaningful gets persisted. Audit-every-mutation is strictest application.
 - [shadcn *Label primitives require Group ancestor](feedback_shadcn_grouplabel.md) — DropdownMenuLabel + analogous wrap Base UI GroupLabel; runtime crash without Group wrapper. Library gotcha.
 - [Base UI Select.Value lazy fallback](feedback_baseui_select_value.md) — SelectValue shows raw value (not label) until SelectContent mounts. Use children-as-function. Library gotcha.
+- [Base UI render prop (not asChild)](feedback_baseui_render_prop.md) — shadcn v4 uses Base UI; element substitution is `render={<X/>}`, not Radix `asChild`. For styled Link: use `buttonVariants` className. Library gotcha.
+- [Smoke + downstream display effects](feedback_smoke_test_downstream.md) — Mutation smoke must walk every surface that reads affected data, not just the mutation flow. Soft-delete: always test existing references. Companion to workflow chunk-end persona pass.
+- [Permission symmetric admin for shared resources](feedback_permission_symmetric_admin.md) — Admin page for resource X where lower role already mutates via another flow: default to lower-role+ view+edit; restrict only destructive ops to admin.
