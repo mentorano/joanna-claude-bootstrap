@@ -2,11 +2,13 @@
 
 Personal opinionated overlay за Claude Code-driven проекти. Дава generic CLAUDE.md skeleton-и + memory bootstrap файлове, които cement-ват:
 
-- **Working mode** — driver chunks, ask only за destructive actions / forks / blockers
-- **Documentation reflex** — proactive capture на decisions/gotchas; STATUS / ROADMAP / product-notes structure
-- **Tool discipline** — Edit not sed, native binaries not source-activate, pytest not python -c
-- **UX patterns** (frontend) — не подскачай UI-я, един-от-всеки UI element, native vs custom affordances, scoped clears
-- **Backend patterns** — strict-on-create / lenient-on-update, temporary specialization dispatch, JSONB seeding, response enrichment, soft-validation
+- **Pre-implement gates** (procedural ritual) — Inventory / Persona value / Mental simulate, plus Strategic-question + Half-baked tests. Single highest-leverage codification — preventing iteration loops that documented rules alone can't.
+- **Working mode** — driver chunks, ask only за destructive actions / forks / blockers; chunk-end persona pass + reflection pass.
+- **Documentation reflex** — proactive capture на decisions/gotchas; STATUS / ROADMAP / product-notes structure; iteration log.
+- **Tool discipline** — Edit not sed, native binaries not source-activate, pytest not python -c.
+- **UX patterns** (frontend) — anti-layout-shift toolkit, overlay-vs-floating, portal event containment, native HTML defaults, schema-aware shared components, whole-element affordance, ConfirmDialog, read-only-from-day-1, URL-synced state, scoped clears, progressive disclosure.
+- **Backend patterns** — strict-on-create / lenient-on-update, temporary specialization dispatch, JSONB seeding, response enrichment, soft-validation.
+- **Library gotchas** — shadcn v4 / Base UI primitives (DropdownMenuLabel needs Group, SelectValue lazy fallback).
 
 ## Layer architecture
 
@@ -33,19 +35,20 @@ overlay/
 ├── ROADMAP.md.template               # forward plan skeleton
 └── product-notes.md.template         # authoritative product knowledge skeleton
 
-memory/                               # auto-loaded во всеки нов проект
-├── feedback_driver_mode.md
-├── feedback_doc_reflex.md
-├── feedback_native_affordances.md
-├── feedback_audit_default.md
-├── feedback_prefer_native_tools.md
-├── feedback_backend_smoke_pattern.md
-├── feedback_persona_defaults.md
-├── feedback_mock_breadth.md
-└── feedback_browser_smoke.md
+memory/                               # auto-loaded в всеки нов проект (consolidated 2026-05-18)
+├── feedback_pre_implement_gates.md   # 3 gates + Strategic + Half-baked — single highest-leverage file
+├── feedback_persona_doctrine.md       # persona-friendly defaults, affordance restraint, terminology canon
+├── feedback_workflow.md               # driver mode + doc reflex + chunk-end ritual + verify-scope-vs-code
+├── feedback_iteration_killers.md      # when in loop: console+network, prototype variants, strategic Q, stop half-baked
+├── feedback_tooling.md                # Edit/git -C/venv binary/pytest/curl/visible Chrome
+├── feedback_audit_default.md          # value statement on persistence
+├── feedback_shadcn_grouplabel.md      # shadcn library gotcha
+└── feedback_baseui_select_value.md    # Base UI library gotcha
 
 apply.sh                              # bootstrap script
 ```
+
+**Consolidation note:** earlier versions had 26 small memory files (one per pattern). They were merged into 5 thematic files + 2 library gotchas because release-by-relevance was failing under coding context — the rules existed but didn't fire. Procedural gates in CLAUDE.md.template + thematic memory now form the active enforcement mechanism. See origin project's `STATUS.md` iteration log entry for 2026-05-18.
 
 ## Usage — apply to a new project
 

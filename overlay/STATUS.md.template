@@ -103,6 +103,22 @@ See **`ROADMAP.md`** for the full phased plan. Short version:
 
 ---
 
+## Iteration log
+
+> Append-only record of catches that warranted a durable change (memory update, CLAUDE.md addition, gotcha, rule reframing). Filled at chunk-end reflection pass (see `memory/feedback_workflow.md`). Format:
+
+```
+### YYYY-MM-DD — <chunk name>
+- Catch: <what owner caught / what required revert>
+- Was the rule already documented? <where, or „no">
+- Why didn't fire: <gate skipped / rule too descriptive / new pattern / etc>
+- Action: <updated memory X / merged into CLAUDE.md Y / new gotcha #N / no action needed>
+```
+
+> Future Claude sessions read this log to learn from past mistakes, not just principles.
+
+---
+
 ## Working mode notes (for future agents)
 
 > Owner profile, communication style, technical level. How to drive at the right granularity. Permissions when to ask vs. proceed.

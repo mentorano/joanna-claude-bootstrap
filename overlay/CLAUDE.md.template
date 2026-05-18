@@ -63,6 +63,59 @@ Real client material (PDF scans, OCR artifacts, audio recordings, transcripts) l
 >
 > Prototype phase from {{DATE}}. Plan: tight slices, demo-able to client. After client signoff, possible rewrite from 0 with production-grade team. See `_workspace/product-notes.md` section X.
 
+## Pre-implement gates (procedural — apply before touching UI/UX code)
+
+The single highest-leverage section in this file. Most iteration loops trace back to one of these gates being skipped silently. The rule: **write the answers to the gates in chat before code, even briefly. Silent „I remember the rule" doesn't fire — the act of writing forces the gate.**
+
+Apply for: any UI/UX chunk, any new page/component, any new affordance. Skip for: pure backend refactor with no UI surface, config-only changes, docs.
+
+### Gate 1 — Inventory (foundation reconnaissance)
+
+Before any UI work, identify the foundation this feature must match:
+
+- **Pilot/existing analogue.** Which pilot component / adjacent page is the template? Inventory: layout, sections, view modes (compact/detailed), affordances (icons / save / cancel), state transitions, URL state, loading/empty/error states, keyboard, pagination, search highlight, audit links.
+- **Shadcn foundation** (when no pilot exists). Which primitives installed (Card, Badge, Tabs, Select, Skeleton)? Design tokens configured (`--card`, `--primary`, `--muted`, `--chart-1..5`)? Chart palette default grayscale → needs override before first chart?
+- **Schema-aware check.** Does this load per-scope data? Then accept scope as prop — **never hardcode pilot/default scope id** in shared component.
+- **Visual baseline V1.** Mixed card sizes (hero + secondary + footer), icons in headers (colored with chart tokens), design tokens (not raw Tailwind colors), trend chips/badges/tabular-nums.
+- **One pattern per interaction, declared upfront.** Multiple cards with similar controls (period, scope, granulation) → declare ONE pattern globally before building the first.
+
+**Default: match the foundation.** Conflict → ask, never unilaterally restructure.
+
+### Gate 2 — Persona value (skip for code-internal refactor)
+
+For user-facing UI:
+
+- **For analytics/dashboards/reporting:** brainstorm 5-8 candidate insights — what does the operator want? What does the boss/decision-maker want? What's impossible on paper that becomes possible here (real value-add)? Pick 3-5 strongest. **This list drives backend queries**, not vice versa.
+- **For new affordances:** persona test = use case clarity + redundancy check + noise cost + „would operator use this?". „Just in case" affordances are noise.
+- **For axes / filters / scopes:** persona mental model. What does user remember when searching? (event date, not `created_at`.)
+- **Inspect data shape** before defaulting (chart windows, default tabs, ranges) — query actual data; sparse fields need different treatment than dense.
+
+### Gate 3 — Mental simulate end-to-end
+
+For every state transition / interactive surface:
+
+- **State transitions.** Read↔edit, open↔closed, loading→loaded, empty→filled — what moves? Heights match? Reserved slots for conditional content?
+- **Conditional renders.** `{cond && <X/>}` in flex row → reserve slot or use `invisible pointer-events-none` placeholder. Never bare conditional sibling.
+- **Event flow.** Parent with `onClick` (e.g. row-click navigate)? React events bubble through React tree, not DOM — portalled children still propagate. Single `stopPropagation` boundary on portal root is DRY.
+- **Cache reactivity.** New `useQuery({ queryKey: ["X"] })` → audit existing mutations: which writes/deletes change X data? Each must `invalidateQueries({ queryKey: ["X"] })` in `onSuccess`. Edit existing mutation files **in same PR**.
+- **Native HTML defaults.** Custom UI over `<input type="search">` / `<input type="date">` / `<select>`? Browser already provides affordance — suppress native with CSS OR use native, never both. Native `title=` 1-2s delay = a11y only, not primary discovery (use CSS tooltip).
+
+### Strategic question test (architectural choice points)
+
+Before deep-building, scan: are there >1 defensible architectural paths? → **ask owner before deep build.** Are UX trade-offs felt only in real UI? → **prototype switchable variants** (`?variant=A/B/C`), not text descriptions. 3+ catches on „cosmetics" → STOP and step back.
+
+Pivots mid-implementation are 2x+ cost vs asking upfront.
+
+### Half-baked test (before declaring „ready")
+
+Visually whole — ship. Compromise (left-aligned without `mx-auto`, `min-h` with empty space, overflow hiding content that should wrap) — **STOP.** Either commit to full clean solution, leave existing state, or ask. Don't ship the middle.
+
+### When to apply
+
+Continuously, not at chunk-end. Pre-flight is first line; chunk-end persona pass + reflection pass is safety net. 5 min upfront on gates saves 30 min iteration loop downstream.
+
+Deep dives + caught-incident calibration live in `memory/feedback_pre_implement_gates.md`. This section is the always-loaded ritual; memory is the case studies.
+
 ## Chunk-end ritual
 
 When concluding a meaningful unit of work (chunk):

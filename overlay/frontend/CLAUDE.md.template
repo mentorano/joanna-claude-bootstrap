@@ -2,47 +2,41 @@
 
 Точката на влизане е `src/main.tsx`. Стартирай с `./start_frontend.sh` от root-а.
 
+> Project-wide UX principles живеят в root `CLAUDE.md`. Operating reflexes (pre-implement gates, persona doctrine, iteration killers) — в `memory/`. **This file** е concrete React/Tailwind/shadcn code patterns, които прилагаме повече от веднъж.
+
 ## Stack
 
-- **Vite 8** — dev server + build (TypeScript transpile + ESM bundling)
-- **React 19** — UI
+- **Vite 8** — dev server + build
+- **React 19**
 - **TypeScript 5.9** — strict mode
-- **TailwindCSS v4** — utility-first CSS, без `tailwind.config.js` (новата v4 конфигурация е inline в `index.css` чрез `@theme`)
+- **TailwindCSS v4** — utility-first; `@theme` config inline в `index.css` (без `tailwind.config.js`)
 - **TanStack Query v5** — server state, cache, retry
 - **Axios** — HTTP клиент с interceptors
-- **React Router v7** — routing
-- **Recharts** — графики (опционално)
+- **React Router v7**
+- **Recharts** — графики
 - **Lucide React** — иконки
+- **shadcn/ui v4 (Base UI primitives)** — UI primitives, копират се в `src/components/ui/`
 
-## Слоеве
+## Слоеве + файлове
 
 ```
-Page (route)
-  → Hook (useQuery / useMutation)
-    → API client (axios)
-      → backend /api/*
+Page (route) → Hook (useQuery/useMutation) → API client (axios) → backend /api/*
 ```
 
-**Правило:** Никога не вика `axios.get` директно от компонент. Винаги през React Query hook.
-
-## Файлове
+**Правило:** Никога `axios.get` директно от компонент. Винаги през React Query hook.
 
 | Папка | Какво стои тук |
 |---|---|
-| `src/api/client.ts` | Една axios инстанция за целия app. Interceptors за logging/errors. |
-| `src/hooks/` | По 1 hook на ресурс. |
-| `src/types/` | TypeScript типове, споделени между API и компоненти. |
-| `src/components/` | Преизползваеми UI блокчета. Без бизнес логика. |
-| `src/pages/` | Route компоненти. Викат hooks, рендерират components. |
-| `src/utils/` | Помощници (logger, formatters, типови guards). |
+| `src/api/client.ts` | Една axios инстанция, interceptors за logging/errors |
+| `src/hooks/` | По 1 hook на ресурс |
+| `src/types/` | TypeScript типове, споделени между API и компоненти |
+| `src/components/ui/` | shadcn-generated primitives. Редактируеми, но **никога не пишем нови ръчно** — само `npx shadcn add <name>` |
+| `src/components/` | Project-specific компоненти. Wrap-ват shadcn primitives + добавят бизнес логика |
+| `src/lib/utils.ts` | shadcn `cn()` helper |
+| `src/pages/` | Route компоненти |
+| `src/utils/` | logger, formatters, type guards, compose helpers |
 
-## Конвенции
-
-### Hooks (React Query)
-
-- Query keys → винаги константа в hook файла, не string literal в компонент.
-- `staleTime` глобално в `App.tsx`; override само ако ресурсът е критично свеж.
-- Mutations → винаги `onSuccess: invalidate`.
+## React Query hooks
 
 ```ts
 const KEYS = {
@@ -56,30 +50,21 @@ export function useResource() {
     queryFn: async () => (await api.get<Resource[]>("/resource")).data,
   });
 }
+
+export function useCreateResource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: ResourceCreate) =>
+      (await api.post<Resource>("/resource", payload)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEYS.all }),
+  });
+}
 ```
 
-### Компоненти
-
-- Винаги именован `Props` интерфейс.
-- Tailwind класове directly. Никакви inline `style={{}}` освен за наистина динамични стойности.
-- `key` от стабилен ID, не индекс.
-
-### Pages
-
-- Loading / error / empty — explicit branches. Никога не приемай че `data` съществува.
-- Page компонент е `default export`.
-
-### Типове
-
-- Огледало на Pydantic схемите в backend.
-- `created_at: string` (не `Date`) — JSON няма Date.
-
-### Logging
-
-```ts
-import logger from "../utils/logger";
-logger.info("event.name", { context: "..." });
-```
+- Query keys → винаги константа в hook файла.
+- `staleTime` глобално в `App.tsx`; override само ако ресурсът е критично свеж.
+- Mutations → винаги `onSuccess: invalidate`.
+- **Cache invalidation audit** на нова query: за всеки нов `queryKey` audit existing mutations — кои affect-ват данните → добави `qc.invalidateQueries` в `onSuccess` **в same PR**. Без този audit, новите queries silently stale (60s default). Виж `memory/feedback_pre_implement_gates.md` Gate 3.
 
 ### Axios paramsSerializer
 
@@ -91,7 +76,91 @@ export const api = axios.create({
 });
 ```
 
-## Build
+## Components / Pages / Types
+
+- Винаги именован `Props` интерфейс. `key` от стабилен ID, не индекс.
+- Tailwind класове directly. Inline `style={{}}` само за наистина dynamic стойности.
+- Page компонент = `default export` (router lazy-load).
+- Loading / error / empty — explicit branches.
+- Types огледало на Pydantic schemas. `created_at: string` (не `Date`) — JSON няма Date.
+
+## Стилове + design tokens
+
+Tailwind v4: `@import "tailwindcss"` в `index.css`. `@theme` tokens inline.
+
+**За нов код предпочитай design tokens пред raw Tailwind colors:**
+
+```tsx
+// ❌ За нов код
+className="bg-white text-slate-900 border-slate-200"
+// ✓ За нов код
+className="bg-card text-foreground border-border"
+```
+
+| Token | Покрива | Utility |
+|---|---|---|
+| `--background` / `--foreground` | page surface + main text | `bg-background`, `text-foreground` |
+| `--card` / `--card-foreground` | cards, list items, table rows | `bg-card`, `text-card-foreground` |
+| `--popover` / `--popover-foreground` | dialogs, dropdowns | `bg-popover`, `text-popover-foreground` |
+| `--primary` / `--primary-foreground` | primary action button | `bg-primary`, `text-primary-foreground` |
+| `--muted` / `--muted-foreground` | secondary text, disabled, hint | `bg-muted`, `text-muted-foreground` |
+| `--accent` / `--accent-foreground` | hover / selected states | `bg-accent`, `text-accent-foreground` |
+| `--destructive` | truly destructive | `bg-destructive` |
+| `--border` / `--input` / `--ring` | borders, focus ring | `border-border` etc. |
+| `--chart-1..5` | chart palette (often grayscale by default — override before first chart) | `text-[var(--chart-N)]` |
+
+Промяна на палитра — една редакция на `:root` в `index.css`; нула пипане на компонентите. Presets: https://ui.shadcn.com/themes. Editor: https://tweakcn.com.
+
+**Изключения за hardcoded utility colors:** (a) project-specific семантика няма token еквивалент, (b) legacy код, още не мигриран. Остави бележка защо.
+
+## shadcn/ui foundation
+
+UI primitives от shadcn/ui v4 (Base UI primitives, не Radix). Копират се в `src/components/ui/` чрез CLI:
+
+```bash
+npx shadcn@latest add <name>      # напр. dialog, dropdown-menu, popover, select, calendar
+```
+
+**Никога ръчно копи-paste от ui.shadcn.com** — CLI track-ва зависимости.
+
+### Wrapper pattern за project-specific компоненти
+
+Custom props / бизнес логика — НЕ пишем в `src/components/ui/` (може да бъде презаписан от `npx shadcn add --overwrite`). Wrapper в `src/components/<Project>Component.tsx`:
+
+```tsx
+import { AlertDialog, AlertDialogAction, ... } from "@/components/ui/alert-dialog";
+
+export default function ConfirmDialog(props: Props) {
+  return <AlertDialog open={props.open} onOpenChange={...}>...</AlertDialog>;
+}
+```
+
+Call sites import-ват wrapper-а (не primitive-а) — миграцията под капака не пипа call sites.
+
+### Base UI specifics (vs Radix)
+
+- **`render` prop вместо `asChild`** за slot composition:
+  ```tsx
+  <AlertDialogTrigger render={<Button variant="destructive">Action</Button>} />
+  ```
+- **`data-open` / `data-closed`** атрибути (не `data-state="open"`). Animation: `data-open:animate-in`, `data-closed:animate-out`.
+- **`"use client"` директива** в shadcn-generated файлове — Next.js convention; в Vite no-op.
+- **`<Toaster />`** mount-ва се веднъж в `App.tsx`. Toast: `toast.success(msg)` от `sonner`.
+- **`*Label` primitives изискват `*Group` ancestor.** `DropdownMenuLabel` wrap-ва Base UI `MenuPrimitive.GroupLabel`, който crash-ва без `<DropdownMenuGroup>` родител. Виж `memory/feedback_shadcn_grouplabel.md`.
+- **`<SelectValue>` lazy fallback.** Show raw value (not label) until SelectContent mounts. Use children-as-function pattern: `<SelectValue>{(v) => OPTIONS.find(o => o.value === v)?.label ?? ""}</SelectValue>`. Виж `memory/feedback_baseui_select_value.md`.
+
+### Какво НЕ да правиш с shadcn
+
+- Не редактирай `src/components/ui/<name>.tsx` за бизнес логика — wrapper-ът е мястото.
+- Не дублирай shadcn-generated класове — `<AlertDialogContent>` вече има `bg-popover p-4 rounded-xl ...`.
+- Не пиши свой modal/popover/dropdown от 0 — потърси готов primitive първо.
+
+## Logging, build, error handling
+
+```ts
+import logger from "../utils/logger";
+logger.info("event.name", { context: "..." });
+```
 
 ```bash
 npm run build       # tsc -b + vite build → dist/
@@ -99,178 +168,53 @@ npm run preview     # сървира dist/
 npm run lint        # eslint
 ```
 
-## Error handling
-
 - `App.tsx` обвит в `ErrorBoundary`.
 - 404 fallback route (`*` → `NotFound`).
-- Нови env променливи → добавяй ги и в `src/vite-env.d.ts`.
+- Нови env променливи → и в `src/vite-env.d.ts`.
 
-## Какво НЕ да правиш
+## Какво НЕ да правиш (общо)
 
-- **Не fetch-ваш с `useEffect + axios.get`.** Използвай React Query.
-- **Не правиш inline styling за статични стойности.** Само Tailwind класове.
-- **Не пишеш `any` без коментар защо.** Ако TS не може да изведе типа — поправи API типа.
-- **Не commit-ваш `node_modules/` или `dist/`.**
-- **Не console.log-ваш в production код.** Ползвай `logger`.
-- **Не impl-ваш auth от нула.** Ползвай готови pattern-и (cookie session от backend, не localStorage за tokens).
-- **Не маха `ErrorBoundary` от App.tsx.**
-- **Не ползваш `sed -i` за TSX / CSS промени.** Edit tool с `old_string`/`new_string`. Особено опасно за multi-line Tailwind класове.
-- **Не пишеш `cd frontend && X`.** `npm` командите работят с относителен path или `npm run <task>`.
+- Не fetch-ваш с `useEffect + axios.get` — React Query.
+- Не inline styling за статични стойности — Tailwind.
+- Не `any` без коментар защо.
+- Не commit-ваш `node_modules/` / `dist/`.
+- Не `console.log` в production — `logger`.
+- Не impl-ваш auth от нула — cookie session, не localStorage за tokens.
+- Не маха `ErrorBoundary`.
+- Не `sed -i` за TSX / CSS — `Edit` tool. Виж root CLAUDE.md „Tooling discipline" + `memory/feedback_tooling.md`.
+- Не `cd frontend && X` — Bash в repo root.
 
 ---
 
-## Project-specific UX rules
+# Project-specific UX code patterns
 
-> Тези conventions са collected from a single project's experience and apply broadly. Adjust per project с product-specific persona / labels / domain.
+> Concrete React/Tailwind patterns, които прилагаме повече от веднъж. UX principles + persona са в root CLAUDE.md + memory; **тук са code mechanics**.
 
-### Персонажът е [PERSONA — заместете]
+## Anti-layout-shift toolkit
 
-Default user е [описание на персона]. **Adoption friction е главният риск.** Преди всеки UX избор питай: "Това ще накара ли персонажа да се замисли, забави или притесни?" Ако да — грешен избор, колкото и да е елегантен.
+Преходите между read↔edit, появата на warning panel-и, отваряне/затваряне на popover — **никога не местят** съседни елементи. (Root CLAUDE.md state-transition principle + `memory/feedback_pre_implement_gates.md` Gate 3.)
 
-### Inline edit, без модал на всеки click
+Концретни техники (pick the matching one):
 
-- Click на клетка → inline editing на същото място.
-- Save на blur, Cmd-Enter, или малък бутон.
-- Audit log записва безшумно.
-- **Modal** само за: destructive actions, final operations, изцяло нов запис. Не за рутинни корекции.
+- **`table-layout: fixed` + explicit `size` per column.**
+- **Inline edit input height = read display height.** Same `py-N`; ✓/✕ inline в `flex items-center`.
+- **Бутончетата държат фокуса при click** (`onMouseDown={(e) => e.preventDefault()}`).
+- **Floating popovers** → Portal към `document.body`.
+- **Conditional buttons в already-existing container slot.** Никога `{cond && <Button>}` като sibling в flex row. Или `invisible pointer-events-none` placeholder, или move в popover/dropdown, или persistent row с slot filled/empty.
+- **Filter / options panels = absolute-positioned dropdown**, не inline expansion. Pattern: panel root `relative`, body `absolute right-0 z-30 ...` + outside-click + Esc close.
+- **Counter / status indicators = stable footer slot**, не inline до input-а.
+- **Empty fields = вече в edit mode**, не „click to edit" placeholder.
+- **`useLayoutEffect` deps за popover repositioning** включват всичко, което променя popover size.
+- **Status badges position в dynamic rows.** Leftmost (editor expansion goes right — safe) или rightmost (с `flex justify-between`). Middle — anti-pattern.
+- **Page width consistency** — всички pages използват Layout's common container width. Без per-page wrappers с по-малки `max-w-*`.
+- **Filter/control row design.** Explicit `h-N` Tailwind за siblings в same row. Range fieldsets: `placeholder="From"/"To"` + `aria-label`, не vertical sub-labels.
 
-### Един от всеки UI елемент
+## Overlay vs floating — anchored UI
 
-Една единствена компонента на проекта за:
-- **Search** — с конфигурируем scope (all fields / specific field). Не пиши втори search компонент дори да трябва "малко по-различен" — добави prop.
-- **Toast/notification** — един pattern, варианти по severity.
-- **Confirmation dialog** — един "сигурна ли си?" компонент. Не пиши ad-hoc `window.confirm`.
-- **Table** — една таблица с per-resource колонна конфигурация. Същото поведение за filter, sort, empty state, row actions menu.
+**Use absolute (overlay, preferred default) когато:**
+- Anchor в document flow, parent НЕ overflow-hidden.
+- Acceptable overlay да scroll-ва с anchor.
 
-Когато pattern се ползва на > 1 място — направи компонент. Не дублирай "защото е по-бързо за тук".
-
-### Search-first home screen
-
-- Голям search box най-горе.
-- Scope selector до него.
-- Резултатите показват **целия запис**, не summary.
-- `Нов запис` е голям, видим primary action.
-- Hidden записи не се виждат по подразбиране.
-
-### Warnings, не блокери
-
-Когато потребителят прави нещо подозрително:
-- Покажи warning + ask confirm
-- Override → save проходи, audit log записва override-а
-- Никога не блокираме изцяло
-
-### Don't Make Me Think
-
-Книгата на Стив Крук — лайтмотивът. Спомни си я, преди да добавиш още един бутон, още един dropdown, още един "помощен" tooltip.
-
-### Не подскачай UI-я при state change
-
-Преходите между read↔edit, появата на warning panel-и, отваряне/затваряне на popover — **никога не местят** съседни елементи. Конкретни rules:
-
-- **`table-layout: fixed` + explicit `size` per колона.** Auto-layout преразпределя ширини при content change.
-- **Inline edit input height = read display height.** Same `py-N`; ✓/✕ inline с input-а в `flex items-center`, не на нов ред.
-- **Бутончетата държат фокуса при click** (`onMouseDown={(e) => e.preventDefault()}`). Иначе blur → attemptSave preempt-ва cancel handler-а.
-- **Floating popovers** → Portal към `document.body`. Не се клипват от `overflow-x-auto`, не отместват съдържание.
-- **Conditional render на action element до други controls = anti-pattern.** Или (a) move в popover/dropdown (no layout impact), или (b) винаги render с `invisible pointer-events-none` placeholder когато inactive. **Никога** `{condition && <button>}` като sibling в flex row.
-- **Filter / options panels = absolute-positioned dropdown, не inline expansion.** Pattern: panel root е `relative`, panel body е `absolute right-0 z-30 mt-2 w-[min(720px,calc(100vw-2rem))]` с outside-click + Esc close.
-- **Counter / status indicators = stable footer slot, не inline до input-а.**
-- **Empty fields = вече в edit mode**, не „клик за редакция".
-
-### Filter/control row design — semantic clusters + uniform heights
-
-Когато няколко interactive controls стоят на един ред, те трябва да изглеждат като един семантичен cluster и да имат еднаква visual weight:
-
-- **Един semantic cluster per row.** Search input + scope select + filter chip + clear button са „с какво филтрирам списъка" — един cluster.
-- **Heights explicit чрез `h-N` Tailwind classes.** Native inputs (date, search) имат browser-default heights които variарat (`<input type="date">` често е по-висок поради calendar icon). Explicit `h-9` (e.g.) force-ва ги еднакви.
-- **Range fieldsets: placeholder „От / До", не vertical sub-labels.** Вложени `<label>От</label>` ги push-ват вертикално → стъпала. Use `placeholder="От"` + `aria-label`.
-- **Multi-select default за filter dropdowns, чийто underlying field е array.** Backend също трябва да приема `list[T]` параметър.
-
-### Clear / reset actions — scoped to single component
-
-Не правя „global clear" бутон, който чисти всичко в няколко компонента. Confusing scope.
-
-- **Search input има own ×** — чисти само search query.
-- **Filter panel има own „Изчисти филтрите"** в горната част на dropdown-а — чисти filter values, не search.
-- **EmptyState dead-end recovery** може да предложи global „изчисти всичко" — единствено там оправдан, потребителят е заседнал.
-
-Когато добавяш нов clear button: **първо питай за какъв scope е**. Default: local.
-
-### Page title carries scope identity; nav stays scope-free
-
-Когато потребителят е навлязла в scope (конкретен ресурс / детайл / админ), **заглавието на страницата носи идентичността на този scope**, не родово. Header nav остава scope-free.
-
-### Whole-element affordance
-
-Когато един card / row / panel представлява една entity и primary action-ът е „отвори/виж", **цялото нещо е кликабъл**, не само бутон в ъгъла.
-
-```tsx
-<section
-  role="button"
-  tabIndex={0}
-  onClick={() => navigate(href)}
-  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(href); } }}
-  className="cursor-pointer ... hover:border-slate-400 hover:shadow-sm focus-visible:ring-2 ..."
->
-  ...
-  <Link to={otherHref} onClick={(e) => e.stopPropagation()}>...</Link>
-</section>
-```
-
-Nested interactive elements с **различен** destination → `onClick={(e) => e.stopPropagation()}`. Когато всички действия водят на едно и също място — премахни secondary бутона.
-
-### ConfirmDialog за state-mutating actions
-
-Архивиране, деактивиране, и всяко друго действие което **променя state** в начин, който не е тривиален undo на същия клик → минава през `ConfirmDialog`. Не само за „delete".
-
-Симетричното action (unhide / reactivate) **не** минава през ConfirmDialog.
-
-### Read-only варианти на интерактивни компоненти
-
-Когато добавяш нов interactive компонент (input / popover / panel), **планирай read-only вариант от ден 1**. `readOnly?: boolean` prop, не отделен компонент. Role-based UI gating има нужда от read-only render на същите surfaces.
-
-### Progressive disclosure — показвай UI elements само когато имат смисъл
-
-Search input, advanced filters, и подобни „secondary" affordances се появяват само когато достигат threshold-а на полезност. Под threshold-а са визуален шум.
-
-`const showSearch = (instances?.length ?? 0) >= 4;` — search-ът не съществува докато не имаме 4+ items.
-
-### Affordances винаги видими
-
-Персоната не hover-ва за да открие какво може. Pencil icons, save/cancel бутончета — **всичко** видимо. Изключение: dense таблици, където pencil на hover е компромис заради визуалния шум.
-
-### URL-synced state за filterable списъци
-
-URL params собственичат query state-а на filterable страници, не local React state. Shareable links. Виж reference implementation.
-
-- **Празни стойности → `sp.delete(k)`**, не `sp.set(k, "")`.
-- **`setSearchParams(next, { replace: true })`** за всеки keystroke — иначе history-то се пълни.
-- **Не дублирай URL state в local React state.** Един source-of-truth.
-- **Не сериализирай всички текущи params** при navigation към нов scope.
-
-### `displayNode` prop за highlight без да чупиш empty-detection
-
-Interactive cell components, които приемат `display: string`, могат да приемат optional `displayNode?: ReactNode` за render-only override (search highlight, formatting). Empty-check винаги използва canonical `display` string:
-
-```tsx
-const renderedDisplay = displayNode ?? display;
-const isEmpty = display.trim() === "";  // ⚠ NOT на displayNode
-```
-
-### Schema-aware shared компоненти — never hardcode reference data ids
-
-Shared components (FilterPanel, AuditFilters, Dashboards), които зареждат per-scope data, **никога** не hardcode pilot/default scope id. Винаги:
-
-1. Приема `scope` (registerType / instanceId / similar) като prop.
-2. Conditional render базиран на schema (`field_definitions`) — не на assumed pilot schema.
-3. Skip data loading изобщо когато schema няма съответния field.
-
-Pilot hardcoded references принадлежат само в pilot-only files. Shared/generic surfaces — schema-aware от ден 1.
-
-### Overlay vs floating — anchored UI elements
-
-UI element „anchored до известен trigger":
-
-**Absolute overlay (preferred default):**
 ```tsx
 <div className="relative">
   <input ... />
@@ -281,114 +225,32 @@ UI element „anchored до известен trigger":
   )}
 </div>
 ```
-Anchor в document flow, container не clips — overlay scroll-ва с anchor.
 
-**Fixed + portal (escape hatch):**
-- Anchor е в overflow-restricted container (table cell, scrollable list item).
+**Use fixed + portal (escape hatch) когато:**
+- Anchor в overflow-restricted container.
 - Overlay трябва да излезе извън clipping context.
-- **Изисква scroll listener** за reposition следвайки anchor:
-  ```tsx
-  useEffect(() => {
-    const reposition = () => { /* recalc top/left от trigger.getBoundingClientRect() */ };
-    window.addEventListener("scroll", reposition, true);
-    window.addEventListener("resize", reposition);
-    return () => { /* cleanup */ };
-  }, [open]);
-  ```
+- **Изисква scroll listener** за reposition.
 
-Default to absolute overlay. Use fixed+portal само ако clipping forces hand.
+Default: absolute. Fixed = escape hatch.
 
-### Portalled content needs explicit event containment
+## Portalled content event containment
 
-React events bubble през **React tree**, не DOM tree. Portalled content (createPortal към document.body) пак propagates events до parent React component. Когато parent има relevant onClick (e.g. row-click → детайл page), всички portalled overlays вътре трябва да stop-нат propagation на boundary:
+React events bubble през **React tree**, не DOM. Portalled content (createPortal → document.body) пак propagates до parent React component. Когато parent има relevant `onClick` (row-click → детайл), всички portalled overlays трябва stopPropagation на boundary:
 
 ```tsx
-<div
-  ref={popoverRef}
-  onClick={(e) => e.stopPropagation()}
-  // ...
->
-  {/* All interactive children inside — buttons, links, toggles */}
+<div ref={popoverRef} onClick={(e) => e.stopPropagation()}>
+  {/* All interactive children inside */}
 </div>
 ```
 
-Single boundary stop е DRY — по-добре от per-button stopPropagation.
+Single boundary stop е DRY.
 
-### Compose helpers — string + ReactNode duality
+## Native HTML defaults
 
-Когато data има визуално богато representation (multi-line, color-coded, highlight-нати tokens) но и нужно canonical string form (empty-check, aria, audit log), pattern е TWO complementary composers:
-
-- `composeXxx(...) → string` — single-line canonical string. Used от: empty detection, aria labels, audit log diff, CSV export.
-- `composeXxxNode(..., query) → ReactNode` — rich rendering (multi-line, highlight, muted dates). Used от: cell `displayNode`, table cells, detail page read views.
-
-Both live в same module за discoverability. EditPopover/InlineEditPanel приемат и двете чрез `display` (string) + `displayNode` (optional ReactNode override).
-
-**Anti-pattern:** дублиране на logic в JSX directly (e.g. render multi-line inline в cell) → discoverability fails, audit log/CSV нямат matching representation.
-
-### Status badges and stable elements в dynamic rows
-
-Когато status indicator (badge, version, timestamp) sit-ва в same flex row с dynamic editor (e.g. inline edit), choose position carefully:
-
-- **Leftmost** позиция на stable element → editor expansion goes right, не помества stable.
-- **Rightmost** позиция → editor expansion bezopasно ако flex justify-between прави space.
-- **Middle** позиция → editor toggle moves stable left or right. Anti-pattern.
-
-### Conditional buttons live в always-existing container slots
-
-Buttons които се появяват/изчезват base on state ВИНАГИ live в container, който съществува regardless of conditional:
-
-- ❌ `{condition && <button>X</button>}` като sibling на required controls → row size jumps.
-- ✓ Persistent row с `<other-controls /> {condition && <button>X</button>}` → row stays, button slot appears/disappears.
-- ✓ Conditional button вътре в dropdown panel (which exists ON state — outside main flow).
-
-### Page width consistency между navigations
-
-Всички page-ове (list, detail, new entry, и т.н.) трябва да use Layout's common container width — да няма horizontal jump при transition между tях. Не въвеждай per-page wrappers с по-малки max-w-* (e.g. `max-w-4xl mx-auto` на detail) — те center-ват content на различна позиция от list-а и page edges не align.
-
-Ако single-column form в wide page изглежда airy, opt for:
-1. Full-width sections с native input widths (acceptable trade-off).
-2. Inline label + input layout per field — uses wide width effectively.
-3. **НЕ** half-baked left-aligned content (без mx-auto) — изглежда непълно.
-
-### Composite group columns — declarative entity+date pairs
-
-В table cells и detail page-а, когато имаме две полета които концептуално са „едно нещо" (entity + date, number + date), те трябва да се render-ват като **една композитна колона/cell + един композитен edit popover**.
-
-Backend declares чрез `group` key в schema:
-```python
-[
-    {"key": "x_number", "kind": "text", "group": "x", ...},
-    {"key": "x_date",   "kind": "date", "group": "x", ...},
-]
-```
-
-Frontend collapse-ва fields със same `group` в composite ColumnUnit. Display: text на ред 1, date на ред 2 (muted). Editor popover: два input-а side-by-side.
-
-### Multi-line cell rendering — entity+date / multi-value items
-
-В table cells, когато стойност е „entity + date" (composite group) или „multi-value with item-date", render-ваме на multi-line:
-
-- Line 1: text/number value (highlight-нато ако search активен)
-- Line 2: date (muted: `text-xs text-slate-500`)
-
-Подобрява четимостта в narrow columns. Прилага се чрез `displayNode` prop (`display` остава plain string за empty-detection).
-
-### Row-click navigation в tables
-
-Tables където всеки row представлява entity, целият row е clickable to детайл page-а. Cursor pointer на `<tr>`. Cell editors остават interactive чрез portal containment (виж „Portalled content needs explicit event containment").
-
-```tsx
-<tr
-  onClick={() => navigate(`/entries/${entry.id}`)}
-  className="group cursor-pointer ..."
->
-  {/* cells with EditPopover — stopPropagation на popover boundary */}
-</tr>
-```
-
-### Hover tooltips — CSS-only, не native `title=` за primary discovery
-
-Native HTML `title=` показва browser tooltip след ~1-2s hover delay — fine за accessibility / occasional reminder, но твърде бавно за primary visual hint. Когато user-ът трябва да открие affordance чрез hover (abbreviated table headers, icon-only buttons без visible label, abbreviated badges) → build CSS-only tooltip като primary visual cue; native `title=` остава set за a11y fallback.
+- **`<input type="search">`** има native ×. Custom × → suppress native: `[&::-webkit-search-cancel-button]:appearance-none`.
+- **`<input type="date">`** има native calendar icon — keep by default.
+- **`<select>`** native dropdown arrow — don't add own.
+- **Native `title=`** има 1-2s delay = a11y/screen reader only. За primary visual hint (abbreviated headers, icon-only buttons) → CSS-only tooltip:
 
 ```tsx
 <th className="group relative whitespace-nowrap ..." title={fullLabel}>
@@ -404,50 +266,146 @@ Native HTML `title=` показва browser tooltip след ~1-2s hover delay �
 </th>
 ```
 
-Key:
-- `pointer-events-none` за да не блокира click-а на trigger-а
-- `z-30` over sticky elements (z-20)
-- `whitespace-nowrap` за да не wrap-не в narrow contexts
-- `transition-opacity duration-100` за gentle reveal
-- Parent с `relative` (или sticky/absolute) за anchor
+Key: `pointer-events-none` за да не блокира trigger click; `z-30` over sticky (z-20); `whitespace-nowrap`. Native `title=` остава за a11y fallback.
 
-Test: ако очакваш user-ът да види tooltip-а в нормален flow → CSS tooltip. Ако е purely a11y fallback → native `title=` е достатъчен.
+## Schema-aware shared components
 
-### Visual baseline at V1 — не V2
+Shared компоненти (FilterPanel, AuditFilters, Dashboards), които зареждат per-scope data, **НИКОГА** не hardcode-ват pilot/default scope id. Винаги:
+1. Приема scope (registerType / instanceId / similar) като prop.
+2. Conditional render базиран на schema — не на assumed pilot schema.
+3. Skip data loading когато schema няма съответния field.
 
-UI features V1 трябва вече да включват visual hierarchy + design tokens + chart palette overrides + icons. Functional-but-flat V1 предизвиква predictable „looks dry / ugly" feedback и forces visual iteration което може да се избегне.
+Pilot hardcoded references — само в pilot-only files.
 
-Checklist преди V1 ship:
-- **Mixed card sizes** — HERO row (big numbers / metrics) + secondary cards + optional footer. Не „all-cards-same-size flat grid".
-- **Design tokens, не raw Tailwind colors** — `bg-card`, `text-foreground`, `border-border`, `bg-muted`, `text-muted-foreground` (shadcn tokens).
-- **Chart color tokens проверени** — shadcn default chart-1..5 typically grayscale. За dashboards/analytics: override в `index.css` с multi-color palette преди да build-наш първия chart. „После ще го override-нем" — chart looks unfinished.
-- **Icons в headers** — Lucide icons next to titles, оцветени с accent color. Не plain text titles.
-- **Trend chips / badges / mixed typography** за numbers analytics: trend chips (↑/↓ %) emerald/rose color-coded, Badge components for status tags, tabular-nums за numbers.
-- **Visual separation между sections** — zone headers, subtle background contrast.
+## Composite group columns + multi-line cells + compose helpers
 
-### One pattern per interaction — declared upfront за feature
+Когато две полета концептуално са „едно нещо" (entity + date, number + date) — една композитна колона/cell + един композитен edit popover.
 
-Когато feature има multiple cards/components с similar controls (period selector, scope selector, filter, granulation): **declare ONE pattern upfront** преди да build-наш първата card. Не pick-per-card.
+Backend declares чрез `group` key в schema:
+```python
+[
+    {"key": "x_number", "kind": "text", "group": "x", ...},
+    {"key": "x_date",   "kind": "date", "group": "x", ...},
+]
+```
 
-Запиши декларацията в коментар на feature composer — не leave it implicit. Когато добавиш нов component с similar control: use declared pattern. Ако не пасва — стoп, питай, и update declaration globally.
+Frontend collapse-ва fields със same `group` в composite ColumnUnit. Display: text line 1, date line 2 (muted). Editor popover: два input side-by-side.
 
-Examples (project-specific examples in project frontend/CLAUDE.md):
-- Period selector → Tabs everywhere
-- Granulation (Day/Week/Month/Year) → Tabs
-- Scope selector → Select (>4 options)
-- Confirmation → ConfirmDialog
-- Loading → Skeleton shape-matched
+### Multi-line cell rendering
 
-Generalizes „one of each UI element" rule to **one pattern per interaction type**.
+В table cells, когато стойност е „entity + date" или „multi-value with item-date":
+- Line 1: text/number (highlighted ако search active)
+- Line 2: date (muted: `text-xs text-slate-500`)
 
-### Cache invalidation audit на нова TanStack query
+### Compose helpers — string + ReactNode duality
 
-Когато добавя нов `useQuery({ queryKey: ["X"] })` — задължителен audit:
+Pattern: TWO complementary composers per visually-rich field:
 
-1. Кои mutations affect-ват X data?
-2. За всяка такава mutation, провери `onSuccess`: invalidate-ва ли `["X"]`?
-3. Ако не → add `qc.invalidateQueries({ queryKey: ["X"] })`.
+- `composeXxx(...) → string` — single-line canonical. Used by: empty detection, aria, audit log diff, CSV export.
+- `composeXxxNode(..., query) → ReactNode` — rich rendering (multi-line, highlight, muted dates). Used by: cell `displayNode`, table cells, detail read views.
 
-Default React Query поведение: `staleTime: 60_000` globally → данните stale-while-revalidate 60s; не refetch automatic. Без explicit cache invalidation, нови queries silently stale след mutations.
+EditPopover/InlineEditPanel приемат `display` (string) + `displayNode` (optional ReactNode override):
 
-При adding new query: edit existing mutation files в **same PR**. Не leave it „за after" — забравя се.
+```tsx
+const renderedDisplay = displayNode ?? display;
+const isEmpty = display.trim() === "";  // ⚠ NOT on displayNode
+```
+
+**Anti-pattern:** duplicate logic в JSX directly → discoverability fails, audit log/CSV нямат matching representation.
+
+## Row-click navigation в tables
+
+Tables където row представлява entity — целият row е clickable to детайл. Cursor pointer на `<tr>`. Cell editors остават interactive чрез portal containment:
+
+```tsx
+<tr onClick={() => navigate(`/items/${item.id}`)} className="group cursor-pointer ...">
+  {/* cells with EditPopover — stopPropagation на popover boundary */}
+</tr>
+```
+
+## Whole-element affordance
+
+Когато един card / row / panel представлява една entity и primary action-ът е „отвори/виж", **цялото е кликабъл**:
+
+```tsx
+<section
+  role="button"
+  tabIndex={0}
+  onClick={() => navigate(href)}
+  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(href); } }}
+  className="cursor-pointer ... hover:border-slate-400 hover:shadow-sm focus-visible:ring-2 ..."
+>
+  {...content...}
+  <Link to={otherHref} onClick={(e) => e.stopPropagation()}>...</Link>
+</section>
+```
+
+- `role="button" tabIndex={0}` + Enter/Space handler — keyboard equivalence.
+- `cursor-pointer` + hover hint + `focus-visible:ring-2`.
+- Nested interactive с **различен** destination → `stopPropagation`. Same destination → drop the nested affordance.
+
+## ConfirmDialog за state-mutating actions
+
+Архивиране, деактивиране, всяко action променящо state в начин, който не е тривиален undo → минава през `ConfirmDialog`. Не само за „delete":
+
+```tsx
+<ConfirmDialog
+  open={confirmOpen !== null}
+  title={`Are you sure about ${confirmOpen?.label}?`}
+  description="What will happen and how to revert."
+  reasonLabel="Reason"  // optional — ако audit-вана причина
+  variant="danger"        // или "primary"
+  busy={mutation.isPending}
+  onConfirm={(reason) => doAction(confirmOpen, reason)}
+  onCancel={() => setConfirmOpen(null)}
+/>
+```
+
+Симетричното action (unhide / reactivate) **не** минава през ConfirmDialog — reverse-ва предишното.
+
+## Read-only варианти от ден 1
+
+Нов interactive компонент — planирай `readOnly?: boolean` prop от ден 1. Display-only render. Не пиши отделен read-only компонент:
+
+```tsx
+if (readOnly) return <plain-display>;
+```
+
+Защо: role-based UI gating има нужда от read-only render на същите surfaces. Без този prop ще се счупим на conditional render-и на всеки call site.
+
+## URL-synced state за filterable списъци
+
+URL params собственичат query state на filterable страници. Линк „с тоя филтър виж" → user попада в същия view; back/forward навигира интуитивно.
+
+- **Празни стойности → `sp.delete(k)`**, не `sp.set(k, "")`.
+- **`setSearchParams(next, { replace: true })`** за всеки keystroke. Push само при explicit commit.
+- **Не дублирай URL state в local React state.**
+- **Не сериализирай всички params** при navigation към нов scope.
+
+## Clear / reset actions — scoped
+
+- **Search input има own × вътре** — чисти само search query.
+- **Filter panel има own „Clear filters" link** — чисти filter values, не search.
+- **EmptyState dead-end recovery** може да предложи global „clear all" — единствено там оправдан.
+
+Default: local (within component). „Global" е red flag.
+
+## Progressive disclosure
+
+Search input, advanced filters и подобни „secondary" affordances се появяват само когато достигат threshold на полезност:
+
+`const showSearch = (items?.length ?? 0) >= 4;` — search не съществува докато не имаме 4+ items.
+
+## i18n / display labels
+
+Бизнес стойностите се пазят като технически кодове, но на потребителя винаги показваме human label. За всеки enum / dict / FK ID имай централно място за translation:
+
+- Roles → `ROLE_LABELS`
+- Audit field keys → `FIELD_LABEL` map
+- Lookup codes → resolve чрез `useXxxOptions()` към `o.label`
+
+И за **смесени стойности** (масиви от обекти в JSON полета) — render helper, знаещ shape-а. НЕ показвай `[object Object]`. Ако formatter среща непознат shape — `JSON.stringify` fallback, не `String()`.
+
+---
+
+> React/state bugs caught многократно (useMutation ref instability, `instanceof` под HMR, `useEffect [open, value]` draft-wipe, `autoFocus` + scroll-close, `*Label` без `*Group`, `<SelectValue>` lazy fallback) — STATUS.md „Known issues / gotchas" + memory `feedback_shadcn_*` / `feedback_baseui_*`.
