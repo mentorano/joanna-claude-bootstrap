@@ -233,6 +233,69 @@ npm run lint        # eslint
 
 Default: absolute. Fixed = escape hatch.
 
+## Reference stability в list-component useMemo chains
+
+⚠ **Recurring bug class — generic React + TanStack Table pattern.** Tracked чрез regression smoke per project (виж `memory/feedback_pre_implement_gates.md` Gate 3 „Reference stability").
+
+В list parent с `useReactTable`, `columns` е memoized чрез `useMemo`. Ако КОЙТО И ДА Е dep в chain-а е нестабилен ref между renders → TanStack Table rebuild → cell components **re-mount** → child component state се губи (open popover, draft text, pendingWarnings).
+
+Симптом (когато се появи): Inline edit save → mutation 409 → warning panel НЕ се появява, popover изчезва. Не throw. Не console.error. Невидим в normal dev flow — лесно регресира при refactor.
+
+**Правило:** Всеки dep в `columns` useMemo chain трябва да trace-ва назад до stable source. Audit при touching list parent.
+
+**Unstable triggers (memoize-вай ги explicitно):**
+
+```tsx
+// ❌ Bug — нов array/object every render
+const fieldDefs = config?.field_definitions ?? [];
+const filtered = fieldDefs.filter((d) => d.kind !== "x");
+const update = useUpdateMutation();  // нов ref на isPending toggle
+
+const columns = useMemo(
+  () => buildColumns(filtered),
+  [filtered, update],  // ← deps unstable → cells re-mount
+);
+
+// ✓ Fix
+const fieldDefs = useMemo(
+  () => config?.field_definitions ?? [],
+  [config?.field_definitions],
+);
+const filtered = useMemo(
+  () => fieldDefs.filter((d) => d.kind !== "x"),
+  [fieldDefs],
+);
+const update = useUpdateMutation();
+// update.mutateAsync е stable function — captured в closure, НЕ в deps.
+
+const columns = useMemo(
+  () => buildColumns(filtered),
+  [filtered],  // ← всичко stable
+);
+```
+
+**Acceptable deps (stable):**
+- Primitive (string / number / boolean)
+- Query data (React Query cache — stable until refetch)
+- Друг `useMemo` value (recursive: проверка през него също)
+- Stable prop от parent който подава memoized value
+
+**Unstable deps (memoize-вай or extract):**
+- Mutation object (нов ref на isPending toggle) — use `mutation.mutateAsync` в closure
+- `?? []` или `?? {}` fallback — нов literal когато source е null/undefined
+- `.filter()` / `.map()` / spreads — нов array всеки render
+- Inline object/array литерали като deps
+- Function литерали без `useCallback`
+
+**Defense layers when fixing this bug class:**
+1. Кодов коментар в list component обясняващ why memoization is critical (preventing future „cleanup").
+2. Repo-tracked regression smoke за full save → warning → override flow.
+3. Pre-implement gate 3 reference-stability checkpoint (виж memory).
+4. Project STATUS gotcha covering ALL triggers (broad, не narrow „mutation only").
+5. Тази секция в frontend/CLAUDE.md.
+
+**Защо рекурира лесно:** Narrow rule (e.g., „don't put mutation in deps") doesn't cover the wider class. Subsequent refactor writes `?? []` или `.filter()` — different trigger, same bug class. Author of refactor мисли „I'm not putting mutation, I'm safe". Bug type is invisible in normal dev flow. Multi-layer defense + broad rule + regression test = survives refactors.
+
 ## Portalled content event containment
 
 React events bubble през **React tree**, не DOM. Portalled content (createPortal → document.body) пак propagates до parent React component. Когато parent има relevant `onClick` (row-click → детайл), всички portalled overlays трябва stopPropagation на boundary:

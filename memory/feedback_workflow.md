@@ -111,6 +111,35 @@ Walk my own behavior across the chunk. Learnings worth durable rule?
 
 ---
 
+## When fixing a bug — generalize the rule before documenting
+
+**Meta-lesson from a recurring bug class (caught + fixed twice).**
+
+When fixing a bug, the rule you write becomes durable. If the rule is too narrow, the same bug class recurs through a different trigger. The narrow rule doesn't pattern-match the new trigger → author of refactor feels safe → bug returns.
+
+**Pattern:** Before documenting a fix, ask:
+1. **What is the BUG CLASS?** (the underlying mechanism — not just „what triggered it this time")
+2. **What are ALL the triggers that could surface the same class?** (think beyond what you just hit)
+3. **Is the symptom invisible in dev flow?** (no throw, no visual jump) — if yes, narrow rules will recur; needs regression test + multi-layer defense.
+4. **Will subsequent refactors naturally re-introduce the bug?** (if your fix relies on a particular pattern that „looks unnecessary" later) — leave defensive code comment explaining WHY.
+
+**Anti-pattern (causes recurrence):**
+- „When X happens, do Y." — narrow rule, only matches X
+- One-line gotcha entry without code example
+- Fix without regression test
+- No code comment at the fix site
+
+**Pattern (survives refactors):**
+- „This bug class happens when ANY of [A, B, C, D] cascades through [Z]." — broad rule, matches all triggers
+- Code example with `❌ bug` vs `✓ fix` side-by-side
+- Repo-tracked regression test that fails if bug returns
+- Code comment at fix site explaining WHY the seemingly-redundant code is critical
+- Multiple layers: STATUS gotcha + memory checkpoint + frontend/backend conventions section + regression test
+
+**Concrete example (the originating case):** Reference instability in `useMemo` dep chains feeding TanStack Table parent → cells re-mount → child component state lost. First fix wrote „don't put mutation object in `useMemo` deps". Subsequent refactor used `?? []` + `.filter()` — different triggers, same bug class. Author felt safe (no mutation in deps), bug returned. Second fix broadened the rule to all reference-instability triggers + added regression test + code comment + multi-layer doc defenses. See `feedback_pre_implement_gates.md` Gate 3 „Reference stability" for the full pattern.
+
+---
+
 ## Verify scope against code, not stale docs
 
 STATUS.md / ROADMAP.md / handoff sections can desync from reality. Each chunk often ships more than its bullets describe (small adjacent polish, drive-by fixes); deferred concern may be addressed in tangential change.

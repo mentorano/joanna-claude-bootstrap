@@ -150,6 +150,50 @@ New `useQuery({ queryKey: ["X"] })` → audit ALL existing mutations:
 
 Without this, queries silently stale (60s default `staleTime`).
 
+### Reference stability in useMemo dep chains for TanStack Table parent
+
+**⚠ Recurring bug class — generic React + TanStack pattern.** In list components with `useReactTable`, `columns` is computed via `useMemo`. If ANY dep in the chain feeding `columns` (directly or transitively through other `useMemo`s) is an **unstable ref between renders**, TanStack Table sees new column defs → rebuild internal model → cell components re-mount → child component state is lost (open popover, draft text, pending warnings, etc.).
+
+**Symptom:** Inline edit save → mutation error (e.g., 409 soft-validation) → warning panel doesn't appear, popover disappears. No throw, no console.error — invisible in standard dev flow.
+
+**Rule:** When adding a `useMemo` dep in a list parent, trace each dep back to a stable source:
+- ✅ Primitive (string / number / boolean)
+- ✅ Query data (React Query cache — stable until refetch)
+- ✅ Another `useMemo` (recursive check through its own deps)
+- ✅ Stable prop from parent passing memoized value
+- ❌ Mutation object (new ref on `isPending` toggle) — use `mutation.mutateAsync` in closure, not the object in deps
+- ❌ `?? []` or `?? {}` fallbacks on nullable values — create new literal each render when source is null/undefined
+- ❌ `.filter()` / `.map()` / spreads — new array each render
+- ❌ Inline object/array literals as deps
+- ❌ Function literals without `useCallback`
+
+**Fix pattern:**
+
+```ts
+// ❌ Bug — new array refs every render cascade through downstream useMemos
+const fieldDefs = registerType.field_definitions ?? [];
+const baseFieldDefs = fieldDefs.filter((d) => d.kind !== "currency");
+
+// ✓ Fix — stable refs
+const fieldDefs = useMemo(
+  () => registerType.field_definitions ?? [],
+  [registerType.field_definitions],
+);
+const baseFieldDefs = useMemo(
+  () => fieldDefs.filter((d) => d.kind !== "currency"),
+  [fieldDefs],
+);
+```
+
+**Defense layers when fixing this bug class:**
+1. Code comment in the list component explaining why the memoization is critical — prevents future „cleanup" refactors.
+2. Regression test (Playwright smoke) — repo-tracked, runs before commit when touching list surfaces.
+3. Pre-implement gate 3 checkpoint (this one).
+4. Project STATUS gotcha covering all triggers (not just the one caught first).
+5. Frontend conventions doc section with code example.
+
+**Why this recurs easily:** A narrow fix („don't put mutation in deps") doesn't cover the wider class. Subsequent refactors write `?? []` or `.filter()` — different triggers, same bug class. Author of refactor doesn't match the narrow pattern and feels safe. The bug type is invisible in normal dev flow (no throw, no visual jump). Multi-layer defense + broad rule + regression test = survives refactors.
+
 ### Native HTML defaults (no duplicate, no slow)
 
 - `<input type="search">` has native ×. Custom × → suppress native.
