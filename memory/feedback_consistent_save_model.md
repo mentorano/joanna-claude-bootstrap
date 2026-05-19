@@ -35,11 +35,34 @@ When designing a config/admin surface, pick **one** model upfront:
 - Multi-step config with interdependencies (database migration design, user-permission grid): batched.
 - Forms with required-field validation: depends — auto-save if independent fields, batched if must validate as a whole.
 
-**If the surface has many controls** — auto-save is almost always right. Batched introduces "I forgot to save" risk that compounds with control count.
+**If the surface has many controls** — depends on whether actions are individually impactful:
+- Many controls, each safe (toggle preferences, sort orders): auto-save.
+- Many controls, each impactful (schema editing, permission grid): **batched-with-explicit-edit-mode** (see canonical recipe below).
+
+**Canonical recipe for high-impact multi-control surfaces — edit-mode toggle:**
+
+When the surface has N+ controls AND each control is impactful (schema, settings, structural config), pure auto-save with ConfirmDialog-per-action becomes friction-heavy (every click = modal). The right pattern:
+
+1. **„Редактирай" / „Edit" button** enters edit mode for the section.
+2. **Visual cue**: ring-primary border + bg-primary tint + „Editing" badge in section header. Unmistakable mode signal.
+3. **All controls become editable** in edit mode; values accumulate in local draft state.
+4. **„Откажи" / „Cancel"** button: if dirty, confirm before discarding via ConfirmDialog ("X unsaved changes will be lost").
+5. **„Запази (N changes)" / „Save (N changes)"** button: opens ConfirmDialog with diff summary (what changed, before→after). Confirm → atomic backend PATCH → exit edit mode.
+6. **Per-section granularity**: each independent section has its own toggle. Multiple sections can be in edit mode simultaneously; saves are independent.
+7. **beforeunload guard** at page level: if any section dirty, browser warns on close/refresh.
+
+This pattern:
+- Solves "too many confirms": ONE dialog at save with diff list, not N per change.
+- Solves "I forgot to save": edit mode is super-visible (ring, badge, action footer).
+- Solves "accidental edit": view mode is read-only; explicit mode toggle protects from misclicks.
+- Solves "lost work on navigation": beforeunload + cancel-confirm guards.
+
+This is the **default for admin/config surfaces with many controls** (schema editing, settings panels, permission grids, lookup tables). Don't reach for per-action confirms in these contexts.
 
 **Pairing with confirm dialogs:**
 
-Auto-save model + ConfirmDialog for impactful actions = best balance. Each action requires explicit confirm step (no silent change), but no global save needed. See [[confirm-dialog-rule]].
+- Auto-save model + ConfirmDialog per-action = good for occasional impactful actions (archive single item, delete user). Bad for multi-control surfaces (friction multiplies).
+- Batched + edit-mode-toggle + ConfirmDialog at save with diff = best for multi-control impactful surfaces. See [[confirm-dialog-rule]].
 
 **Anti-patterns:**
 
