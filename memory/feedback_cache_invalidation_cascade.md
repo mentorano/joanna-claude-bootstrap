@@ -53,4 +53,24 @@ User-reported "X is updated but Y still shows old"  → "kind changed but date p
 
 React Query supports partial-key matching: invalidating `["register-types"]` matches `["register-types", { includeArchived: true }]` too. Useful for parametric queries. But it does NOT cascade to wrapping queries with different prefixes. Always enumerate.
 
-**Pair with:** [[cross-impact-reasoning]] — cache cascade is one specific form of cross-impact. [[pre-implement-gates]] Gate 3 — mental simulation of "what queries depend on this data".
+**Sub-rule — `staleTime` tuning for denormalized computed responses:**
+
+When a query response includes denormalized values that depend on mutations of *other* resources (counts, aggregations, suggestions, last-activity timestamps) — the default 60s `staleTime` is too long. The failure mode: tab A makes an entry mutation → tab B's cached register-instances response continues to show stale counts / stale suggested next-number for up to 60s. Even within one tab, navigating away and back inside the staleTime window shows pre-mutation values.
+
+Recipe for such queries:
+
+```ts
+useQuery({
+  queryKey: ["register-instances"],
+  staleTime: 0,
+  refetchOnMount: "always",  // authoritative refresh on every page navigation
+});
+```
+
+Plus the existing rule: mutations of the underlying resources must invalidate these query keys.
+
+**Case study (digital-archives):** `useRegisterInstances` returns `entry_count`, `last_entry_*`, `suggested_entry_number` — all derived from the `register_entries` table. With default `staleTime`, a freshly created entry was not reflected in the list view's count/suggestion until refresh. Set `staleTime: 0` + `refetchOnMount: "always"` for queries whose payloads include cross-resource computed values.
+
+Default `staleTime: 60s` is fine for queries returning only the resource's own fields — there, invalidation on mutation is sufficient. The tighter setting is reserved for queries whose responses are denormalized aggregates of other resources.
+
+**Pair with:** [[cross-impact-reasoning]] — cache cascade is one specific form of cross-impact. [[pre-implement-gates]] Gate 3 — mental simulation of "what queries depend on this data". [[server-authoritative-compute]] — when the denormalized value is server-computed (max, count, suggestion), staleTime tuning is the second half of the contract.
