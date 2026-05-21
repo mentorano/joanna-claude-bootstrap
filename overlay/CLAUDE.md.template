@@ -116,6 +116,22 @@ Continuously, not at chunk-end. Pre-flight is first line; chunk-end persona pass
 
 Deep dives + caught-incident calibration live in `memory/feedback_pre_implement_gates.md`. This section is the always-loaded ritual; memory is the case studies.
 
+## PR review reflex (always-on когато правя code review)
+
+Apply whenever reviewing a PR / branch / другия агент's chunk, especially before approving or requesting changes:
+
+- **Three-dot diff, не two-dot.** `gh pr diff <#>` ИЛИ `git diff main...origin/branch`, никога `git diff main..branch`. Two-dot includes main's post-split additions като fake „deletions on branch side" → phantom regression alarms. Single highest-impact PR review reflex. См. memory rule `feedback_pr_review_three_dot_diff.md`.
+
+- **Behavior-focused, не само scope.** За search / parsing / „many input forms" features: explicit query-input matrix преди approve.
+  - Ask author for exact query strings they tested (paste in PR description).
+  - 5-min adversarial brainstorm: empty / punctuation-only / very long / unknown scope / impossible identifiers / informal aliases / mixed scripts.
+  - Verify realistic fixture data in tests, не just simplistic „entry_number=87".
+  - Verify portable + non-portable test coverage split (e.g., SQLite unit tests + Postgres integration tests for the same logic).
+
+  Verbal „smoke checked X" alone is insufficient. См. `feedback_search_review_matrix.md`.
+
+- **First command on every PR review:** `gh pr diff <#>` then read. Then everything else.
+
 ## Chunk-end ritual
 
 When concluding a meaningful unit of work (chunk):
