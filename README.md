@@ -35,20 +35,19 @@ overlay/
 ├── ROADMAP.md.template               # forward plan skeleton
 └── product-notes.md.template         # authoritative product knowledge skeleton
 
-memory/                               # auto-loaded в всеки нов проект (consolidated 2026-05-18)
-├── feedback_pre_implement_gates.md   # 3 gates + Strategic + Half-baked — single highest-leverage file
-├── feedback_persona_doctrine.md       # persona-friendly defaults, affordance restraint, terminology canon
-├── feedback_workflow.md               # driver mode + doc reflex + chunk-end ritual + verify-scope-vs-code
-├── feedback_iteration_killers.md      # when in loop: console+network, prototype variants, strategic Q, stop half-baked
-├── feedback_tooling.md                # Edit/git -C/venv binary/pytest/curl/visible Chrome
-├── feedback_audit_default.md          # value statement on persistence
-├── feedback_shadcn_grouplabel.md      # shadcn library gotcha
-└── feedback_baseui_select_value.md    # Base UI library gotcha
+memory/                               # reusable feedback rules and case-study calibrations
+├── MEMORY.md                          # compact always-on memory summary
+├── feedback_pre_implement_gates.md    # 3 gates + Strategic + Half-baked — single highest-leverage file
+├── feedback_persona_doctrine.md        # persona-friendly defaults, affordance restraint, terminology canon
+├── feedback_workflow.md                # driver mode + doc reflex + chunk-end ritual + verify-scope-vs-code
+├── feedback_iteration_killers.md       # when in loop: console+network, prototype variants, strategic Q, stop half-baked
+├── feedback_tooling.md                 # Edit/git -C/venv binary/pytest/curl/visible Chrome
+└── feedback_*.md                       # additional focused generic lessons from real project chunks
 
-apply.sh                              # bootstrap script
+apply.sh                               # bootstrap script
 ```
 
-**Consolidation note:** earlier versions had 26 small memory files (one per pattern). They were merged into 5 thematic files + 2 library gotchas because release-by-relevance was failing under coding context — the rules existed but didn't fire. Procedural gates in CLAUDE.md.template + thematic memory now form the active enforcement mechanism. See origin project's `STATUS.md` iteration log entry for 2026-05-18.
+**Memory note:** this repo intentionally keeps both thematic summary files and focused `feedback_*.md` lessons. The always-loaded CLAUDE templates contain the procedural enforcement; memory files preserve deeper calibration and incident-derived rules.
 
 ## Usage — apply to a new project
 
@@ -97,8 +96,9 @@ Hook triggers at the precise moment when a change is being finalized — не de
 
 1. Извлечи pattern-а без project-specific examples.
 2. Add секция в съответния template (или нов memory file).
-3. Commit + push tук.
-4. Next нов проект → automatically получава pattern-а.
+3. Commit locally in this repo.
+4. Ask owner before remote push.
+5. Next нов проект → automatically получава pattern-а.
 
 **Не add-вай project-specific lessons** — те живеят в Layer 3 (`STATUS.md` gotchas на конкретния проект). Този repo е само за generic patterns.
 

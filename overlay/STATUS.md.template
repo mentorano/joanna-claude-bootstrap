@@ -42,8 +42,8 @@
 docker run -d --name {{db-name}} ...
 python3.11 -m venv backend/.venv
 backend/.venv/bin/pip install -r backend/requirements.txt --index-url https://pypi.org/simple/
-cd frontend && npm install && cd ..
-source backend/.venv/bin/activate && cd backend && alembic upgrade head && cd ..
+(cd frontend && npm install)
+backend/.venv/bin/alembic -c backend/alembic.ini upgrade head
 ./start_backend.sh    # terminal 1
 ./start_frontend.sh   # terminal 2
 ```
@@ -125,7 +125,7 @@ See **`ROADMAP.md`** for the full phased plan. Short version:
 
 {{OWNER_NAME}} is the product owner. {{COMMUNICATION_STYLE}}. {{TECHNICAL_LEVEL}}.
 
-**Drive at the right granularity.** When {{OWNER_NAME}} approves a scope (a phase, a chunk), execute the WHOLE thing without asking at each sub-step. Check in at meaningful milestones, not per task. Ask permission only for: destructive/external actions (commit, push, delete), real product forks where >1 answer is defensible, or genuine blockers.
+**Drive at the right granularity.** When {{OWNER_NAME}} approves a scope (a phase, a chunk), execute the WHOLE thing without asking at each sub-step. Check in at meaningful milestones, not per task. Ask permission for destructive/external actions, remote push/deploy, credentials, data migrations, real product forks where >1 answer is defensible, or genuine blockers. Local commits are OK when meaningful and verified, unless the project says otherwise.
 
 **Be proactive.** Add small adjacent polish, surface gotchas, propose improvements at milestone reports. Senior-engineer behavior, not task-runner.
 

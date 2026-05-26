@@ -80,6 +80,7 @@ pytest -v -s                # verbose + stdout
 
 - `tests/conftest.py` дава `client` fixture (httpx ASGI client). DB-то е override-нато на SQLite in-memory преди import на app — затова `get_settings.cache_clear()` в conftest е критичен.
 - Не мокай database — ползвай реална тестова DB (SQLite in-memory). Мок-натите тестове могат да минат, докато миграцията гръмва в prod.
+- Test DB URL must be **forced**, not inherited from ambient `.env` via `setdefault`. Tests should fail loudly rather than accidentally touching dev/prod data.
 
 ## Storage — статични ресурси
 
@@ -108,6 +109,12 @@ alembic history
 Преди commit на нова миграция: прегледай `alembic/versions/<file>.py` ръчно — autogenerate често пропуска неща (индекси, FK, defaults, enum changes).
 
 **Важно:** Всеки нов модел трябва да се импортира в `app/models/__init__.py` за да го види autogenerate.
+
+**Migration safety:**
+
+- Before running `alembic downgrade` on any shared/live-like DB, read `downgrade()` manually. Downgrade code that deletes seed/config rows can delete real rows too.
+- Guard destructive downgrade deletes narrowly (scope + code + ownership marker), not by broad IDs only.
+- If a migration seeds explicit integer IDs, update the sequence afterwards (`setval` / dialect equivalent) or the next insert can collide.
 
 ## Какво НЕ да правиш
 
@@ -179,6 +186,23 @@ async def _serialize_many(db: AsyncSession, items: list[X]) -> list[XOut]:
 - **Display-only fields, не core data.** Не дублирай данни, които frontend така или иначе държи в кеш.
 - **Optional defaults в Pydantic** (`field_name: str | None = None`). Frontend се справя без тях.
 - **Lookup-ите живеят в API слоя**, не в service-а. Service-ът остава фокусиран върху мутации.
+
+## Server-authoritative compute
+
+Counts, summaries, suggestions, permissions, and dashboard numbers are backend-owned. Frontend may format/display them, but should not re-compute authoritative business values from a paginated/filtered local slice.
+
+- Compute over the full authoritative scope server-side, not only currently visible rows.
+- If the value depends on permissions/lifecycle state, enforce the rule in the service/query layer and return a ready-to-display result.
+- If frontend shows a derived indicator, add a backend/API smoke or unit test that proves hidden/archived/filtered rows are handled correctly.
+
+## Permissions — backend is truth, UI mirrors only
+
+Frontend role checks are a usability layer, not security.
+
+- Every mutating route has backend permission checks.
+- Read endpoints either filter unauthorized resources or return 403 consistently — decide per resource semantics.
+- UI can hide forbidden buttons, but must handle 403 gracefully with a safe navigation path.
+- When adding a permission, audit symmetric actions: create/edit/archive/restore/bulk/import/export/read-only display.
 
 ## Dialect-portable JSON field access
 

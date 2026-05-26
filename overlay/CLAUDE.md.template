@@ -30,11 +30,14 @@ Real client material (PDF scans, OCR artifacts, audio recordings, transcripts) l
 4. **No hard delete, ever** (when applicable). Business records get status transitions, users deactivated, etc. Audit retains everything.
 5. **Audit every mutation.** Field-level changed values, actor, timestamp. The audit log has a *Human Viewable Interface* — searchable.
 6. **Warnings, not blockers, for suspicious data.** Show warning → ask confirmation → user overrides → audit logs the override. Never silently block.
-7. **Don't Make Me Think.** Steve Krug. Every screen.
-8. **Inline cell editing, NOT modal-on-click.** Modals only for: destructive actions, final operations, brand-new record creation.
-9. **State transitions don't move things.** Read↔edit, popover open↔close, warning panel appear — must not shift surrounding layout.
+7. **Source traceability for imported/derived records.** If a record came from OCR/import/legacy/source material, provide a one-click path to the source artifact or citation. Trust beats clever extraction.
+8. **Dashboard is behavioral, not just informational.** Start from what the persona needs to notice/act on, especially what was impossible in the old/manual process. Insight list drives backend queries, not vice versa.
+9. **Search/filter placement is product semantics.** Header/global search implies search-first/global product model; page-local search implies scoped work. Put filters where the user's mental model says they belong.
+10. **Don't Make Me Think.** Steve Krug. Every screen.
+11. **Inline cell editing, NOT modal-on-click.** Modals only for: destructive actions, final operations, brand-new record creation.
+12. **State transitions don't move things.** Read↔edit, popover open↔close, warning panel appear — must not shift surrounding layout.
 
-> Add project-specific principles here. Keep это list short, opinionated, non-negotiable.
+> Add project-specific principles here. Keep this list short, opinionated, non-negotiable.
 
 ## Architecture summary
 
@@ -146,7 +149,7 @@ When concluding a meaningful unit of work (chunk):
    - **Cross-project generic** (UI pattern, code convention, workflow) → CLAUDE.md + project memory + bootstrap memory + bootstrap overlay template.
    - **Pure process / collaboration** → project memory + bootstrap memory.
 4. **Update STATUS.md** с chunk outcome.
-5. **Commit + push** project repo, then bootstrap repo if cross-project findings extracted.
+5. **Commit locally** project repo, then bootstrap repo if cross-project findings extracted. **Remote push only with explicit owner permission.**
 6. **Hook reminder** prints о CLAUDE.md/memory edits — safety net, не trigger.
 
 Detailed protocol в memory rule `feedback_chunk_end_reflection_protocol.md`.

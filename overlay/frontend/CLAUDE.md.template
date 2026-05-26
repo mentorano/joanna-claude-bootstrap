@@ -209,6 +209,29 @@ npm run lint        # eslint
 - **Page width consistency** — всички pages използват Layout's common container width. Без per-page wrappers с по-малки `max-w-*`.
 - **Filter/control row design.** Explicit `h-N` Tailwind за siblings в same row. Range fieldsets: `placeholder="From"/"To"` + `aria-label`, не vertical sub-labels.
 
+### Dense responsive tables
+
+Data-heavy tables must degrade by **horizontal scroll**, not by unreadable wrapping.
+
+- Avoid `w-full + table-layout: fixed` as the only mobile strategy for many columns — narrow screens can starve columns and create character-by-character wrapping + huge row heights.
+- Use explicit `min-w-*` / pixel min-width for dense tables, then wrap the table in `overflow-x-auto`.
+- Keep orientation: sticky primary column only if it does not break overlays/editors; otherwise ensure row labels remain visible in the first columns.
+- Mobile/table smoke should check budgets, not vibes: page height, tallest row height, and whether horizontal scroll exists when expected.
+- Sticky/action cells need **opaque** backgrounds; translucent zebra rows can bleed under horizontal scroll.
+
+### Table customization / per-user preferences
+
+When adding customizable data tables:
+
+- Prefer **per-user preferences** for column widths/order/density/styles unless product explicitly says shared/admin-managed.
+- Persist column resize on drag end, not every pointer move.
+- During active drag, avoid query invalidation/refetch that races optimistic local width state.
+- Default widths can fill available viewport proportionally from schema weights; manual resize pins explicit pixel widths and enables overflow scroll.
+- Show resize handles / styling controls only in explicit edit/customize mode, not always-on visual noise.
+- Provide a clear “reset to default” escape hatch for auto-saved personal table preferences.
+- If implementing custom pointer resize inside horizontal overflow, account for `scrollLeft` delta while dragging near the right edge.
+- Styling scale should flow through CSS variables/classes down the cell tree; child hardcoded text sizes defeat parent font-size controls.
+
 ## Overlay vs floating — anchored UI
 
 **Use absolute (overlay, preferred default) когато:**

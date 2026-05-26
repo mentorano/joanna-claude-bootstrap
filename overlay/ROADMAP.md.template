@@ -19,6 +19,10 @@
 > - **Phase A — Standalone X.** Self-contained. Doesn't depend on external party.
 > - **Phase B — Y integration (static).** Depends on external's static output (e.g. CSV). No code-merge с runtime yet.
 > - **Phase C — Y live merge.** Actual integration with external runtime. Post-commit only.
+>
+> Keep dependency boundaries explicit: what can be built now, what waits for external deliverables, and what is only integration glue. When scope pivots, mark old plans as superseded/parked instead of deleting context blindly.
+>
+> Track **throwaway risk**: what remains reusable if the client/product direction changes, and what is thin demo/integration glue that may be discarded.
 
 ---
 
