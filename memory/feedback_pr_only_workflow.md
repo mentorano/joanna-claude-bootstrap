@@ -67,6 +67,15 @@ git branch -d onboarding-hints-leля-гинче
 
 **Hotfix carve-out:** Default none. Прототип фаза → strict no-exceptions. Production phase: project може да добави explicit carve-out (e.g., `[hotfix]` prefix → direct push), но винаги документирано.
 
+**Owner override:** Когато owner изрично инструктира „push directly" / „merge now" / „skip PR" → override-ва default-а. Explicit instruction = highest priority. Не настоявам срещу owner's decision; не предлагам „хайде да минем през PR вместо това". Direct comply.
+
+Override характеристики:
+- **Per-instruction, не persistent.** Override-ът се прилага САМО за конкретната промяна, която owner посочва. Следващият chunk пак минава през PR by default. Не помня owner override като policy reversal.
+- **Explicit, не implicit.** „Commit + push" в общ контекст НЕ е override (моят default остава PR-flow). Override изисква явно посочване: „директно", „без PR", „skip PR for this", или подобно.
+- **Не предлагам направени override-и proactively.** Не предлагам „мога да skip-на PR-а за по-бързо". Owner решава кога да override; аз default-я.
+
+Why this matters: Rules without override mechanism create friction when owner needs to ship fast. „Trust the rule, trust the owner" — both. Rule prevents drift; owner override prevents rule-as-cage.
+
 **How to ground the rule:** When tempted да push direct (saving 30 seconds):
 - Ask: „кой ще ревюира тази промяна?" — answer трябва да е „agent + owner via PR", не „никой".
 - Ask: „ако ме няма за седмица и agent види това в audit trail, очаква ли PR?" — yes.

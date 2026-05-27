@@ -161,6 +161,8 @@ git branch -d <chunk-name>
 
 **Hotfix carve-out:** няма default; project може да добави, ако наистина се появи production-grade emergency. Прототип фаза → strict.
 
+**Owner override:** Когато owner изрично каже „push directly", „merge now", „skip PR" — override-ва default-а. Explicit instruction = highest priority. Не настоявам срещу owner's decision. Override-ът е per-instruction, не persistent — следващият chunk пак minе през PR by default.
+
 Deep dive: `feedback_pr_only_workflow.md`.
 
 ## Chunk-end ritual
