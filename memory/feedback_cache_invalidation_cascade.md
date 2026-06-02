@@ -73,4 +73,16 @@ Plus the existing rule: mutations of the underlying resources must invalidate th
 
 Default `staleTime: 60s` is fine for queries returning only the resource's own fields — there, invalidation on mutation is sufficient. The tighter setting is reserved for queries whose responses are denormalized aggregates of other resources.
 
+**Sub-rule — the invalidated key must LITERALLY match the consuming query's key:**
+
+Cascade discipline assumes you invalidate the *right* key. A subtler bug: you invalidate a **plausible-but-wrong key string**, so nothing matches and the cascade silently does nothing — no error, no warning, the list just stays stale.
+
+Case (digital-archives): a new `useImportCommit` hook called `invalidateQueries({ queryKey: ["register-entries"] })`, but the list query used `["entries"]` (its `KEYS.all`). The strings *look* right but don't match → after import the list showed the old (empty) state; the user reported "the records are gone" though the API returned them fine. Cost: a diagnostic round to discover it was a key typo, not data loss.
+
+How to avoid:
+- When writing a mutation's `onSuccess`, **open the consuming hook and copy its `KEYS` prefix verbatim** — don't reconstruct the string from memory or from the REST path. The resource's URL (`/register-entries`) is often NOT its query key (`["entries"]`).
+- Prefer importing a shared `KEYS` object so the key has one source of truth, instead of duplicating the literal in every mutation.
+- Partial-key matching means `["entries"]` matches `["entries","list",params]` — target the **prefix**, but it must be the *correct* prefix. A wrong prefix matches nothing.
+- This failure is silent (React Query doesn't warn on an invalidate that matches zero queries). Treat "list didn't refresh after my mutation" as a key-mismatch suspect first.
+
 **Pair with:** [[cross-impact-reasoning]] — cache cascade is one specific form of cross-impact. [[pre-implement-gates]] Gate 3 — mental simulation of "what queries depend on this data". [[server-authoritative-compute]] — when the denormalized value is server-computed (max, count, suggestion), staleTime tuning is the second half of the contract.

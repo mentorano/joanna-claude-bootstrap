@@ -19,3 +19,17 @@ metadata:
 - Документирай multi-port setup в STATUS.md или CLAUDE.md ако проектът има worktrees.
 - За user-driven testing: ясно посочи кой URL/port да тества (избягвай ambiguity).
 - Свързано: ако имаш main + feature worktrees, dev server може да върви само на main (за shared DB state). Промените на feature branch не са visible until merge OR until user switches dev server.
+
+**Генерализация — „X липсва / не се показва" → ЛОКАЛИЗИРАЙ слоя преди да fix-неш:**
+
+Същата дисциплина важи отвъд HMR. При всяко „не виждам / изчезна / празно е", потвърди на КОЙ слой реално липсва, преди да допуснеш bug в най-видимия (UI render):
+
+`storage (DB) → API response → client cache → render`
+
+- **Данни „изчезнаха"** → първо `curl`/fetch API-то директно. Ако API-то връща записите → данните са налице; bug-ът е по-нагоре (cache key mismatch, stale query, render condition), НЕ загуба на данни.
+- **Стойност „празна" в клетка** → виж какво е storage-нато (`curl` + `jq` на entry-то). Грешна ФОРМА (низ вместо списък) изглежда като „празно" в render, но данните ги има.
+- Едва след като знаеш слоя, поправяй там.
+
+Каноничен случай (digital-archives): user „импортнах 49 записа, но ги няма". `curl` на `/api/register-entries` върна 49 → данните бяха налице → bug-ът беше cache-ключ mismatch (виж [[cache-invalidation-cascade]]), не загуба. Без layer-localization щях да гоня грешен слой (или да паникьосам за загубени данни).
+
+Litmus: преди да fix-неш „не се показва", можеш ли да кажеш на кой от 4-те слоя липсва? Ако не — `curl` слоя отдолу пръв.
