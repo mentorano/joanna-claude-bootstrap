@@ -69,6 +69,14 @@ If genuinely need ad-hoc Python eval (rare): `backend/.venv/bin/python -c "..."`
 
 ---
 
+## Shell cwd persists across tool calls — bites later path/git commands
+
+Работната директория на Bash **persist-ва между извикванията**. `cd <subdir>` за едно нещо (напр. `cd frontend && npm run build`) оставя СЛЕДВАЩИТЕ relative-path команди да резолват грешно: `git add frontend/src` от `frontend/` → `frontend/frontend/src` → „pathspec did not match". Default: ползвай `git -C <root>` / абсолютни пътища; ако трябва `cd`, ресетни cwd-то (standalone `cd <root>`) преди path-relative команди. Hit 2026-06-02.
+
+## Browser-preview MCP — DOM eval е source of truth, screenshot е sanity check
+
+Preview viewport-ът е **емулиран фиксиран размер** — сменя се през resize tool-а, НЕ чрез влачене на preview прозореца (window resize НЕ trigger-ва CSS breakpoint-и; страницата си остава на зададения viewport). Screenshot-ите **не хващат надеждно** mid-animation / drawer-open / overlay състояния (race с toggle-а; често рендерират от scroll origin). За verify на layout/позиция/computed стилове → `preview_eval` (computed styles + `getBoundingClientRect`) е истината; screenshot-ът е визуална проверка отгоре. (Не заключавай „не работи" от screenshot без DOM мярка.) Hit многократно 2026-06-02 responsive pass.
+
 ## Why the security prompts aren't noise
 
 The prompts that fire on `sed -i`, `cd && X`, `source`, `python -c` catch real risk classes (file corruption, hook execution, shell injection, arbitrary code). Native tools (Edit, Read, Grep, Glob) exist precisely to do these workflows without those gates.
