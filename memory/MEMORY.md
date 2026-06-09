@@ -1,6 +1,7 @@
 - [Pre-implement gates](feedback_pre_implement_gates.md) — The 3 gates (Inventory / Persona value / Mental simulate) + Strategic + Half-baked tests. Single highest-leverage file. Procedural ritual in project root CLAUDE.md; this is the case-study calibration.
 - [Persona doctrine](feedback_persona_doctrine.md) — Persona-friendly defaults, affordance restraint, terminology canon, mock-the-breadth. The tiebreaker for any UX micro-decision. Project supplies specific persona name and terminology.
 - [Workflow](feedback_workflow.md) — Driver mode (chunk granularity), documentation reflex, chunk-end persona+reflection passes, verify scope against code not stale docs.
+- [Standing mode + no silent caps](feedback_standing_mode_no_silent_caps.md) — Honor standing directives (ultracode) by default — don't drift to lighter mode, don't re-ask; reconcile built-vs-manifest before „done"; log every deferral, never silently cap scope.
 - [Iteration killers](feedback_iteration_killers.md) — When already in iteration loop: ask for console+network, prototype UX variants, ask strategic question, stop half-baked compromises. Companion to pre-implement-gates.
 - [Tooling](feedback_tooling.md) — Edit not sed, git -C not cd, venv binary not source, pytest/curl not python -c, visible Chrome not headless. Extended rationale; hard rules in project root CLAUDE.md.
 - [Audit default](feedback_audit_default.md) — Value statement: anything forensically meaningful gets persisted. Audit-every-mutation is strictest application.
