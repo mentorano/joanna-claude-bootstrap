@@ -36,6 +36,7 @@ Real client material (PDF scans, OCR artifacts, audio recordings, transcripts) l
 10. **Don't Make Me Think.** Steve Krug. Every screen.
 11. **Inline cell editing, NOT modal-on-click.** Modals only for: destructive actions, final operations, brand-new record creation.
 12. **State transitions don't move things.** Read↔edit, popover open↔close, warning panel appear — must not shift surrounding layout.
+13. **Simplicity beats theoretical completeness.** When a more complete / honest / granular representation risks confusing users (extra signals, finer breakdowns), prefer the simpler model they actually understand. Test: *does the current model confuse real users?* — NOT *is it theoretically lossless?* If no real confusion, don't add complexity. Gate richness behind evidence of need via progressive disclosure. Know when to STOP refining. (See `memory/feedback_simplicity_over_completeness.md`.)
 
 > Add project-specific principles here. Keep this list short, opinionated, non-negotiable.
 
